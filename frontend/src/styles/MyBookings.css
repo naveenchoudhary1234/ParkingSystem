@@ -1,0 +1,461 @@
+
+.mybookings-page .booking-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Ensure action area stays at bottom for equal-height cards (scoped) */
+.mybookings-page .booking-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* stretch to grid row height */
+}
+
+.mybookings-page .action-btn {
+  padding: 0.34rem 0.68rem; /* compact buttons */
+  border-radius: 8px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+  min-width: 72px;
+}
+
+
+.mybookings-page .action-btn.primary {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.mybookings-page .action-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.mybookings-page .action-btn.danger {
+  background: var(--error-color);
+  color: white;
+  box-shadow: 0 4px 10px rgba(248,113,113,0.14);
+}
+
+.mybookings-page .action-btn.danger:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 53, 69, 0.28);
+}
+
+.mybookings-page .action-btn.secondary {
+  background: var(--bg-white);
+  color: var(--text-dark);
+  border: 1px solid var(--border-light);
+}
+
+
+/* Details Section */
+.mybookings-page .booking-details {
+  margin-bottom: 0.45rem;
+  overflow: auto; /* allow inner scrolling if content is long */
+  flex: 1 1 auto; /* allow details to expand so actions stick to bottom */
+}
+
+.mybookings-page .details-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+
+.mybookings-page .details-row:last-child {
+  margin-bottom: 0;
+}
+
+.mybookings-page .detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.45rem;
+  background: rgba(243,244,246,0.7);
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.03);
+  transition: background-color 0.12s ease, transform 0.12s ease;
+}
+
+.mybookings-page .detail-item:hover {
+  transform: translateY(-2px);
+}
+
+.mybookings-page .detail-icon {
+  font-size: 0.95rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mybookings-page .detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.mybookings-page .detail-label {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.mybookings-page .detail-value {
+  font-size: 0.86rem;
+  color: var(--text-dark);
+  font-weight: 700;
+  word-break: break-word;
+}
+
+/* Actions Section */
+.booking-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Ensure action area stays at bottom for equal-height cards */
+.booking-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* stretch to grid row height */
+}
+
+.action-btn {
+  padding: 0.45rem 0.8rem; /* compact buttons */
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  min-width: 80px;
+}
+
+
+.action-btn.primary {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.action-btn.danger {
+  background: var(--error-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(248,113,113,0.18);
+}
+
+.action-btn.danger:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.action-btn.secondary {
+  background: var(--bg-white);
+  color: var(--text-dark);
+  border: 1px solid var(--border-light);
+}
+
+/* History-specific subtle style so history cards look slightly muted */
+.mybookings-page .history-booking {
+  background: linear-gradient(180deg, rgba(246,251,255,0.6), var(--bg-white));
+  border-left: 4px solid rgba(15,23,42,0.04);
+}
+
+.action-btn.secondary:hover {
+  background: #f8fafc;
+  transform: translateY(-3px);
+  border-color: rgba(99,102,241,0.06);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .bookings-container {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .booking-card {
+    padding: 1rem;
+  }
+  
+  .booking-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .status-badge {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+  
+  .details-row {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+  
+  .detail-item {
+    padding: 0.5rem;
+  }
+  
+  .booking-actions {
+    justify-content: stretch;
+  }
+  
+  .action-btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .booking-actions {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .property-name {
+    font-size: 1rem;
+  }
+  
+  .detail-value {
+    font-size: 0.85rem;
+  }
+}
+
+/* Animation */
+.mybookings-page .booking-card {
+  animation: fadeInUp 0.45s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Empty State Enhancement */
+.card.text-center {
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+/* Tab styles when inside the empty-state card */
+.card.text-center .tab-btn.active {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #ffffff; /* white text for strong contrast */
+  border: none;
+  box-shadow: 0 8px 25px rgba(79,70,229,0.18);
+}
+
+.card.text-center .tab-btn:not(.active) {
+  color: #1e4881;
+  background: #ffffff;
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+.card.text-center p {
+  color: var(--text-light);
+  margin-bottom: 1.5rem;
+}
+
+/* Booking Tabs */
+.booking-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Tab Content */
+.tab-content {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Page-scoped overrides to remove purple frames from parent styles */
+.mybookings-page {
+  background: linear-gradient(180deg, #f6fbff 0%, #eef6ff 100%);
+  padding: 2rem 0; /* restore top/bottom spacing for the page */
+}
+
+.mybookings-page .tab-content {
+  background: transparent; /* ensure cards sit on page background */
+  padding: 0;
+}
+
+/* Page title style for My Bookings */
+.mybookings-page .page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0 0 0.5rem 0;
+}
+
+.mybookings-page .bookings-container {
+  background: transparent;
+  padding: 1rem 0 2rem 0;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* Make tabs readable on the light page background */
+.mybookings-page .tab-btn {
+  color: var(--text-dark);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+.mybookings-page .tab-btn:hover {
+  background: rgba(255,255,255,1);
+}
+
+.mybookings-page .tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: #fff;
+}
+
+/* Scoped override: allow booking cards to expand on the My Bookings page
+   without changing global overflow rules used by other pages (hero, home, etc.) */
+.mybookings-page .booking-card {
+  max-height: none;
+  overflow: visible;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Time Remaining Indicator */
+.time-remaining {
+  background: linear-gradient(135deg, var(--warning-color), #f59e0b);
+  color: #0f1724;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 0.9rem;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(249, 168, 37, 0.12);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* Booking Card States */
+.mybookings-page .booking-card.active-booking {
+  border-left: 4px solid var(--success-color);
+}
+
+.mybookings-page .booking-card.history-booking {
+  border-left: 4px solid rgba(107,114,128,0.08);
+  opacity: 0.98;
+}
+
+/* Status Pills */
+.status-pill.status-completed {
+  background: linear-gradient(135deg, var(--success-color), #059669);
+  color: white;
+}
+
+.action-btn.success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  cursor: default;
+}
+
+.action-btn.success:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design for Tabs */
+@media (max-width: 768px) {
+  .booking-tabs {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .time-remaining {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+}

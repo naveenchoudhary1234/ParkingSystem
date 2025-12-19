@@ -1,0 +1,515 @@
+/* Parking Slot Selector Styles - BookMyShow Style */
+
+.parking-slot-selector {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  border-radius: 20px;
+  padding: 2rem;
+  color: white;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.selector-header h3 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: #f9fafb;
+}
+
+.slot-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat.available {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #bbf7d0;
+}
+
+.stat.booked {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fecaca;
+}
+
+/* Legend Bar */
+.legend-bar {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.legend-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.legend-color.available {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.legend-color.selected {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.legend-color.booked {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.legend-color.unavailable {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+/* Layout Container */
+.layout-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.parking-grid.customer-view {
+  display: grid;
+  gap: 6px;
+  padding: 2rem;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.3));
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  max-width: 100%;
+  overflow-x: auto;
+  position: relative;
+}
+
+/* Customer Parking Slots - BookMyShow Style */
+.customer-slot {
+  width: 70px;
+  height: 90px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 3px solid transparent;
+  position: relative;
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.customer-slot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.customer-slot:hover::before {
+  left: 100%;
+}
+
+/* Available Slots */
+.customer-slot.slot-available {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-color: #34d399;
+  box-shadow: 
+    0 4px 15px rgba(16, 185, 129, 0.3),
+    0 0 0 1px rgba(52, 211, 153, 0.1) inset;
+}
+
+.customer-slot.slot-available:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.4),
+    0 0 20px rgba(52, 211, 153, 0.3);
+  border-color: #6ee7b7;
+}
+
+/* Selected Slot */
+.customer-slot.slot-selected {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border-color: #60a5fa;
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: 
+    0 10px 30px rgba(59, 130, 246, 0.5),
+    0 0 25px rgba(96, 165, 250, 0.4);
+  z-index: 10;
+  animation: selectedPulse 2s infinite;
+}
+
+@keyframes selectedPulse {
+  0%, 100% {
+    box-shadow: 
+      0 10px 30px rgba(59, 130, 246, 0.5),
+      0 0 25px rgba(96, 165, 250, 0.4);
+  }
+  50% {
+    box-shadow: 
+      0 10px 30px rgba(59, 130, 246, 0.7),
+      0 0 30px rgba(96, 165, 250, 0.6);
+  }
+}
+
+/* Booked Slots */
+.customer-slot.slot-booked {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border-color: #f87171;
+  cursor: not-allowed;
+  opacity: 0.8;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.customer-slot.slot-booked:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Unavailable Slots */
+.customer-slot.slot-unavailable {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: #d1d5db;
+  border-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.customer-slot.slot-unavailable:hover {
+  transform: none;
+}
+
+/* Hover Effect for Available Slots */
+.customer-slot.slot-hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 
+    0 6px 20px rgba(16, 185, 129, 0.4),
+    0 0 15px rgba(52, 211, 153, 0.2);
+}
+
+/* Slot Content */
+.slot-number {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.slot-icon {
+  font-size: 1.5rem;
+  margin-bottom: 3px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.slot-price {
+  font-size: 0.7rem;
+  opacity: 0.95;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.slot-status {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+}
+
+/* Road Space */
+.road-space {
+  background: linear-gradient(135deg, #374151, #4b5563);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  position: relative;
+  overflow: hidden;
+}
+
+.road-markers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.road-line {
+  color: #6b7280;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Direction Indicators */
+.direction-indicators {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.direction-marker {
+  position: absolute;
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #dbeafe;
+  text-align: center;
+  min-width: 80px;
+}
+
+.direction-marker.entry-bottom {
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.direction-marker.exit-bottom {
+  bottom: 10px;
+  right: 10px;
+}
+
+.direction-marker.entry-left {
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.direction-marker.exit-right {
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.direction-marker.entry-top {
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.direction-marker.exit-top {
+  top: 10px;
+  right: 10px;
+}
+
+.direction-icon {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 2px;
+}
+
+.direction-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Selected Slot Info */
+.selected-slot-info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.selection-summary h4 {
+  color: #dbeafe;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.selection-details {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.slot-detail {
+  color: white;
+  font-size: 0.95rem;
+}
+
+.slot-detail strong {
+  color: #93c5fd;
+}
+
+/* Helpful Tips */
+.helpful-tips {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.helpful-tips h4 {
+  color: #fbbf24;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.helpful-tips ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.helpful-tips li {
+  padding: 0.5rem 0;
+  color: #d1d5db;
+  font-size: 0.9rem;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.helpful-tips li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* Placeholder State */
+.slot-selector-placeholder {
+  text-align: center;
+  padding: 3rem;
+  color: #9ca3af;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .parking-slot-selector {
+    padding: 1rem;
+  }
+
+  .selector-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .selector-header h3 {
+    font-size: 1.5rem;
+  }
+
+  .legend-bar {
+    gap: 1rem;
+  }
+
+  .parking-grid.customer-view {
+    padding: 1rem;
+  }
+
+  .customer-slot {
+    width: 60px;
+    height: 80px;
+    font-size: 0.7rem;
+  }
+
+  .selection-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .direction-marker {
+    min-width: 60px;
+    padding: 0.3rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .selector-header h3 {
+    font-size: 1.3rem;
+  }
+
+  .legend-bar {
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+
+  .customer-slot {
+    width: 50px;
+    height: 70px;
+    font-size: 0.65rem;
+  }
+
+  .slot-icon {
+    font-size: 1.2rem;
+  }
+
+  .parking-grid.customer-view {
+    gap: 4px;
+  }
+
+  .helpful-tips {
+    padding: 1rem;
+  }
+
+  .helpful-tips li {
+    font-size: 0.8rem;
+  }
+}
