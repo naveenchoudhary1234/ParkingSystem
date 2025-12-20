@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { apiRequest } from "../api";
+import "../styles/auth.css";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -20,14 +21,34 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="form-container">
-      <h2>Forgot Password</h2>
-      <form onSubmit={handleSubmit}>
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <button type="submit">Send Reset Link</button>
-        {msg && <div className="success">{msg}</div>}
-        {error && <div className="error">{error}</div>}
-      </form>
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-header">
+          <h2 className="auth-title">Forgot Password</h2>
+          <p className="auth-subtitle">Send a reset link to your email</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="form-input"
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-large">
+            Send Reset Link
+          </button>
+
+          {msg && <div className="success">{msg}</div>}
+          {error && <div className="error">{error}</div>}
+        </form>
+      </div>
     </div>
   );
 }

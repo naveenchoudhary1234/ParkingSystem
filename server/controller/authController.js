@@ -162,8 +162,16 @@ exports.forgotPassword = async (req, res) => {
     // Wrap user._id in an object
     const resetToken = jwtHelper.generateToken({ userId: user._id }, "15m");
 
-    // Send email with token
-    await sendEmail(email, "Password Reset", `Your reset token: ${resetToken}`);
+    const frontendBase = process.env.FRONTEND_URL || "http://localhost:3000";
+    const resetLink = `${frontendBase}/reset-password?token=${resetToken}`;
+
+    // Send email with token and clickable link
+    await sendEmail(
+      email,
+      "Password Reset",
+      `Your password reset link (valid 15 minutes): ${resetLink}\nIf the link is not clickable, copy and paste it into your browser. Token: ${resetToken}`,
+      `<p>Your password reset link (valid 15 minutes):</p><p><a href="${resetLink}">${resetLink}</a></p><p>If the link is not clickable, copy and paste it into your browser.</p><p>Token: <code>${resetToken}</code></p>`
+    );
 
     console.log("📧 Password reset mail sent to:", email);
 

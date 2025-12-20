@@ -1,6 +1,6 @@
 import MyBookings from "./pages/MyBookings";
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -61,7 +61,7 @@ function App() {
             <Route path="/map" element={<ParkingMap />} />
           </Routes>
           </div>
-          <Footer />
+          <FooterConditional />
         </div>
       </Router>
     </AuthProvider>
@@ -78,6 +78,14 @@ const RoleBasedRoute = ({ allowedRole, component: Component }) => {
   }
   
   return <Navigate to="/" />;
+};
+
+// Footer wrapper to hide on specific routes
+const FooterConditional = () => {
+  const location = useLocation();
+  // Hide footer only on rental dashboard
+  if (location.pathname === "/rental-dashboard") return null;
+  return <Footer />;
 };
 
 export default App;

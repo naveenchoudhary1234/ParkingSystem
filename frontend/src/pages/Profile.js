@@ -7,6 +7,7 @@ import "../styles/improved-profile.css";
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [propertyBookings, setPropertyBookings] = useState([]); // For owners' property bookings
   const [properties, setProperties] = useState([]); // For owners
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,7 +43,9 @@ const Profile = () => {
   const fetchOwnerProperties = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return;
+      if (!token) {
+        return;
+      }
 
       // Fetch both pending and approved properties for owner
       const [pendingResponse, approvedResponse] = await Promise.all([
@@ -60,9 +63,28 @@ const Profile = () => {
         approved: approvedByOwner || [],
         total: (pendingResponse || []).length + (approvedByOwner || []).length
       });
+
+      // Fetch bookings for all owner properties
+      if (approvedByOwner && approvedByOwner.length > 0) {
+        try {
+          const allPropertyBookings = await Promise.all(
+            approvedByOwner.map(prop => 
+              apiRequest(`/parking-property/${prop._id}/bookings`, "GET", null, token)
+                .catch(() => [])
+            )
+          );
+          // Flatten all booking arrays
+          const flatBookings = allPropertyBookings.flat().filter(b => b);
+          setPropertyBookings(flatBookings);
+        } catch (bookingErr) {
+          console.error("Error fetching property bookings:", bookingErr);
+          setPropertyBookings([]);
+        }
+      }
     } catch (err) {
       console.error("Error fetching owner properties:", err);
       setProperties({ pending: [], approved: [], total: 0 });
+      setPropertyBookings([]);
     }
   };
 
@@ -99,17 +121,22 @@ const Profile = () => {
       // Owner-specific stats
       const totalApproved = properties.approved?.length || 0;
       const totalPending = properties.pending?.length || 0;
-      const totalRevenue = properties.approved?.reduce((sum, prop) => {
-        // Estimate revenue based on property slots and hourly rate
-        const totalSlots = (prop.carSlots || 0) + (prop.bikeSlots || 0);
-        return sum + (totalSlots * (prop.pricePerHour || 0) * 24 * 30); // Monthly estimate
+      
+      // Calculate actual revenue from all non-cancelled bookings in owner's properties
+      const actualRevenue = (propertyBookings || []).reduce((sum, booking) => {
+        // Count all bookings except cancelled (includes pending and confirmed)
+        if (booking.status !== 'cancelled') {
+          const amount = booking.totalAmount || 0;
+          return sum + amount;
+        }
+        return sum;
       }, 0) || 0;
 
       return {
         totalProperties: totalApproved + totalPending,
         approvedProperties: totalApproved,
         pendingProperties: totalPending,
-        monthlyRevenue: totalRevenue,
+        monthlyRevenue: actualRevenue,
         totalSlots: properties.approved?.reduce((sum, prop) => sum + (prop.carSlots || 0) + (prop.bikeSlots || 0), 0) || 0,
         avgPricePerHour: properties.approved?.length > 0 ? 
           (properties.approved.reduce((sum, prop) => sum + (prop.pricePerHour || 0), 0) / properties.approved.length).toFixed(0) : 0
@@ -132,11 +159,11 @@ const Profile = () => {
 
       const stats = {
         totalBookings: bookings.length,
-        pendingBookings: bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length,
-        completedBookings: bookings.filter(b => b.status === 'completed' || b.status === 'paid').length,
-        totalSpent: bookings.reduce((sum, b) => sum + (b.amount || 0), 0),
+        pendingBookings: bookings.filter(b => b.status === 'pending').length,
+        completedBookings: bookings.filter(b => b.status === 'confirmed').length,
+        totalSpent: bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0),
         thisMonthBookings: bookings.filter(b => new Date(b.createdAt) >= thisMonth).length,
-        favoriteSpots: [...new Set(bookings.map(b => b.parkingSlotId))].length
+        favoriteSpots: [...new Set(bookings.map(b => b.slot))].length
       };
 
       return stats;
@@ -182,9 +209,9 @@ const Profile = () => {
         .slice(0, 5)
         .map(booking => ({
           type: "booking",
-          action: `Parking ${booking.status} at ${booking.location || 'Parking Spot'}`,
+          action: `Parking ${booking.status} at ${booking.propertyName || 'Parking Spot'}`,
           time: formatTimeAgo(booking.createdAt),
-          amount: booking.amount ? `₹${booking.amount}` : null,
+          amount: booking.totalAmount ? `₹${booking.totalAmount}` : null,
           bookingId: booking._id
         }));
     }
@@ -267,7 +294,7 @@ const Profile = () => {
       default:
         return [
           { icon: "🅿️", title: "Book Parking", desc: "Find & book parking spots", link: "/book-slot" },
-          { icon: "📋", title: "My Bookings", desc: "View your bookings", link: "/my-bookings" },
+          { icon: "📋", title: "My Bookings", desc: "View your bookings", link: "/bookings" },
           { icon: "❤️", title: "Favorites", desc: "Your saved spots", link: "/favorites" },
           { icon: "🎁", title: "Rewards", desc: "Loyalty points & offers", link: "/rewards" }
         ];
@@ -276,9 +303,9 @@ const Profile = () => {
 
   const favoriteSpots = [
     ...new Set(bookings.map(b => ({ 
-      id: b.parkingSlotId, 
-      name: b.location || 'Parking Spot',
-      location: b.address || 'Location not specified',
+      id: b.slot, 
+      name: b.propertyName || 'Parking Spot',
+      location: b.propertyAddress || 'Location not specified',
       rating: 4.5 + Math.random() * 0.5
     })))
   ].slice(0, 5);
@@ -325,10 +352,10 @@ const Profile = () => {
                   {bookings.map((booking) => (
                     <div key={booking._id} className="booking-item">
                       <div className="booking-info">
-                        <h4>{booking.location || 'Parking Spot'}</h4>
+                        <h4>{booking.propertyName || 'Parking Spot'}</h4>
                         <p>Booking ID: {booking._id.slice(-6).toUpperCase()}</p>
                         <p>Date: {new Date(booking.createdAt).toLocaleDateString()}</p>
-                        <p>Duration: {booking.duration || 'N/A'}</p>
+                        <p>Duration: {booking.hours || 'N/A'} hours</p>
                         {booking.startTime && <p>Start: {new Date(booking.startTime).toLocaleString()}</p>}
                         {booking.endTime && <p>End: {new Date(booking.endTime).toLocaleString()}</p>}
                       </div>
@@ -337,7 +364,7 @@ const Profile = () => {
                           {booking.status}
                         </span>
                         <div className="amount">
-                          {booking.amount ? `₹${booking.amount}` : 'Pending'}
+                          {booking.totalAmount ? `₹${booking.totalAmount}` : 'N/A'}
                         </div>
                       </div>
                     </div>
