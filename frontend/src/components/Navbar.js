@@ -87,13 +87,15 @@ export default function Navbar() {
                 </Link>
               )}
               {user?.role === "rental" && (
-                <Link 
-                  to="/rental-dashboard" 
-                  className={`nav-link ${isActive('/rental-dashboard') ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Rental Dashboard
-                </Link>
+                <>
+                  <Link 
+                    to="/rental-dashboard" 
+                    className={`nav-link ${isActive('/rental-dashboard') ? 'active' : ''}`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Rental Dashboard
+                  </Link>
+                </>
               )}
               {user?.role === "owner" && (
                 <Link 

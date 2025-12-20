@@ -305,6 +305,22 @@
   box-shadow: var(--shadow-xl);
 }
 
+/* Card media (property photo) */
+.card-media {
+  width: 100%;
+  height: 180px;
+  background: #f3f4f6;
+  border-bottom: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

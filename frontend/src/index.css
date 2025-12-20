@@ -326,8 +326,8 @@ code {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-  color: white;
+  background: linear-gradient(135deg, #e9edf5 0%, #dee5f2 100%);
+  color: #1f2937;
 }
 
 .btn-primary:hover {
@@ -355,6 +355,31 @@ code {
 .btn-small {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-sm);
+}
+
+/* Outline button (global, elegant SaaS style) */
+.btn-outline {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-outline:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Add Property page scoped palette (softer) */
+.dashboard-main .section-card .btn-primary {
+  background: linear-gradient(135deg, #eef2f7 0%, #e6ebf3 100%);
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+}
+
+.dashboard-main .section-card .btn-primary:hover {
+  box-shadow: 0 8px 25px rgba(31, 41, 55, 0.12);
+  transform: translateY(-2px);
 }
 
 /* Card Styles */

@@ -492,7 +492,7 @@ exports.getAllProperties = async (req, res) => {
 exports.getBookings = async (req, res) => {
   try {
     const { id } = req.params;
-    const bookings = await Booking.find({ parking: id }).populate("user");
+    const bookings = await Booking.find({ property: id }).populate("user");
     res.json(bookings);
   } catch (err) {
     console.error("Get Bookings Error:", err.message);
@@ -560,25 +560,28 @@ exports.getRentalStats = async (req, res) => {
       .filter(b => b.status !== 'cancelled')
       .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
     
-    // Calculate cars and bikes currently booked
-    const currentlyBooked = activeBookings.filter(booking => {
-      const slot = allSlots.find(s => s._id.toString() === booking.slot.toString());
-      return slot;
-    });
-    
-    const carsBooked = currentlyBooked.filter(booking => {
-      const slot = allSlots.find(s => s._id.toString() === booking.slot.toString());
-      return slot && slot.type === 'car';
-    }).length;
-    
-    const bikesBooked = currentlyBooked.filter(booking => {
-      const slot = allSlots.find(s => s._id.toString() === booking.slot.toString());
-      return slot && slot.type === 'bike';
-    }).length;
+    // Helper to get slot type for both layout-based and legacy slots
+    const getSlotType = (booking) => {
+      const info = booking.slotInfo;
+      if (info && (info.vehicleType || info.type)) {
+        return (info.vehicleType || info.type).toLowerCase();
+      }
+      const found = allSlots.find(s => s._id.toString() === String(booking.slot));
+      return found?.type?.toLowerCase();
+    };
+
+    // Calculate cars/bikes currently booked (active right now)
+    const carsBookedActive = activeBookings.filter(b => getSlotType(b) === 'car').length;
+    const bikesBookedActive = activeBookings.filter(b => getSlotType(b) === 'bike').length;
+
+    // Calculate cars/bikes booked in the current month (not cancelled)
+    const monthlyBooked = thisMonthBookings.filter(b => b.status !== 'cancelled');
+    const carsBookedMonthly = monthlyBooked.filter(b => getSlotType(b) === 'car').length;
+    const bikesBookedMonthly = monthlyBooked.filter(b => getSlotType(b) === 'bike').length;
     
     // Calculate occupancy rate
     const totalSlots = totalCarSlots + totalBikeSlots;
-    const occupancyRate = totalSlots > 0 ? ((carsBooked + bikesBooked) / totalSlots * 100) : 0;
+    const occupancyRate = totalSlots > 0 ? (((carsBookedActive + bikesBookedActive) / totalSlots) * 100) : 0;
     
     const stats = {
       totalProperties: properties.length,
@@ -588,11 +591,11 @@ exports.getRentalStats = async (req, res) => {
       activeBookings: activeBookings.length,
       totalRevenue,
       monthlyRevenue,
-      carsBooked,
-      bikesBooked,
+      carsBooked: carsBookedMonthly,
+      bikesBooked: bikesBookedMonthly,
       occupancyRate: Math.round(occupancyRate * 10) / 10,
-      availableCarSlots: totalCarSlots - carsBooked,
-      availableBikeSlots: totalBikeSlots - bikesBooked
+      availableCarSlots: totalCarSlots - carsBookedActive,
+      availableBikeSlots: totalBikeSlots - bikesBookedActive
     };
     
     console.log("📈 DEBUG: Rental stats calculated:", stats);

@@ -533,16 +533,6 @@ export default function Parking() {
             </button>
           </div>
           
-          {locationStatus && (
-            <div className={`location-status ${
-              error ? 'error' : 
-              gettingLocation || loading ? 'loading' : 
-              'success'
-            }`}>
-              {locationStatus}
-            </div>
-          )}
-          
           {userLocation && (
             <div className="location-info">
               ✅ Location services enabled - showing results sorted by distance

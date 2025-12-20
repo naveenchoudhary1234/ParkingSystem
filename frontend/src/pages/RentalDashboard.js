@@ -103,14 +103,20 @@ const RentalDashboard = () => {
         const stats = await statsResponse.json();
         console.log("✅ Loaded rental stats:", stats);
         
+        // Map backend stats correctly
+        const totalSlotsFromStats = (stats.totalCarSlots || 0) + (stats.totalBikeSlots || 0);
+        const occupancyRounded = typeof stats.occupancyRate === 'number'
+          ? Math.round(stats.occupancyRate * 10) / 10
+          : 0;
+
         setRentalStats({
-          totalProperties: stats.totalProperties,
-          totalSlots: stats.totalSlots,
-          occupancyRate: Math.round(stats.occupancyRate),
-          totalRevenue: Math.round(stats.totalRevenue || 0), // Use totalRevenue from backend
-          monthlyRevenue: Math.round(stats.revenue || 0),
-          carsBooked: stats.carsBooked,
-          bikesBooked: stats.bikesBooked
+          totalProperties: stats.totalProperties || 0,
+          totalSlots: totalSlotsFromStats,
+          occupancyRate: occupancyRounded,
+          totalRevenue: Math.round(stats.totalRevenue || 0),
+          monthlyRevenue: Math.round(stats.monthlyRevenue || 0),
+          carsBooked: stats.carsBooked || 0,
+          bikesBooked: stats.bikesBooked || 0
         });
       } else {
         console.warn("Failed to load rental stats, using fallback calculation");
@@ -189,7 +195,7 @@ const RentalDashboard = () => {
         setSearchResults(results);
       } catch (error) {
         console.error('Geocoding error:', error);
-        // Fallback to empty results instead of mock Delhi coordinates
+       
         setSearchResults([]);
       }
       setIsSearching(false);
@@ -213,8 +219,22 @@ const RentalDashboard = () => {
 
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files || []);
-    // TODO: upload files to storage and store URLs. For now, store file names.
-    setPhotos(files.map((f) => f.name));
+    if (files.length === 0) {
+      setPhotos([]);
+      return;
+    }
+    // Convert images to Data URLs (base64) to store and display per property
+    const readers = files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        })
+    );
+    Promise.all(readers).then((dataUrls) => {
+      setPhotos(dataUrls);
+    });
   };
 
   const handleLocationSelect = (location) => {

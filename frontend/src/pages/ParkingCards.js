@@ -161,6 +161,12 @@ export default function ParkingCards() {
           <div className="parking-grid">
             {filteredSpots.map((spot) => (
               <div key={spot._id} className="parking-card">
+                {/* Property image if available */}
+                {Array.isArray(spot.photos) && spot.photos.length > 0 && (
+                  <div className="card-media">
+                    <img src={spot.photos[0]} alt={`${spot.name} parking`} />
+                  </div>
+                )}
                 <div className="card-header">
                   <div className="card-badge">
                     {spot.carSlots > 0 && spot.bikeSlots > 0 ? '🚗🏍️' : spot.carSlots > 0 ? '🚗' : '🏍️'}

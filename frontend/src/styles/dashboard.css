@@ -83,6 +83,8 @@
   padding: 2rem;
   width: calc(100% - var(--sidebar-width));
   background: var(--bg-light);
+  height: calc(100vh - 70px);
+  overflow-y: auto; /* ensure only main content scrolls */
 }
 
 .dashboard-content {
@@ -331,6 +333,44 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+}
+
+/* High-contrast form styling for light backgrounds */
+.form-group label,
+.form-label {
+  color: #1a202c; /* dark readable */
+  font-weight: 600;
+}
+
+.form-input,
+textarea.form-input,
+input.form-input {
+  width: 100%;
+  background: #ffffff;
+  color: #1a202c;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+}
+
+.form-input::placeholder {
+  color: #718096; /* slate-500 */
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.search-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  color: #667eea;
 }
 
 .form-group.full-width {
@@ -631,7 +671,7 @@
 
 /* Form Help and Coordinates Styling */
 .form-help {
-  color: var(--color-text-secondary);
+  color: #4a5568; /* readable secondary text */
   font-size: 0.85rem;
   margin-top: 0.25rem;
   display: block;
