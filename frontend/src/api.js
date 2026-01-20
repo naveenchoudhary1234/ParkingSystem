@@ -1,5 +1,4 @@
-// API utility for backend requests
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://parkingsystem-hgzu.onrender.com/api";
 
 export async function apiRequest(endpoint, method = "GET", data = null, token = null) {
   const url = `${API_BASE}${endpoint}`;
