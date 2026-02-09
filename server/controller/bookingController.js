@@ -3,23 +3,22 @@ const ParkingSlot = require("../model/ParkingSlot");
 const PropertySlot = require("../model/PropertySlot");
 
 // CREATE BOOKING
-exports.createBooking = async (req, res) => {
+exports.createBooking = async (req, res, next) => {
   try {
     const { slot, property, hours, totalAmount, startTime, endTime } = req.body;
     
-    console.log("🎯 Creating booking with data:", { slot, property, hours, totalAmount });
+    console.log("Creating booking with data:", { slot, property, hours, totalAmount });
 
-    // For new visual layout system, we need to extract slot info from the slot object
     const slotId = slot?.id || slot?._id || slot;
     const slotData = typeof slot === 'object' ? slot : null;
     
     console.log("🔍 Extracted slot ID:", slotId, "Slot data:", slotData);
 
-    // Find the parking property and check the layout data
+    
     const ParkingProperty = require("../model/ParkingProperty");
     const parkingProperty = await ParkingProperty.findById(property);
     if (!parkingProperty) {
-      return res.status(404).json({ message: "Parking property not found" });
+      return next(new (require("../util/ApiError"))(404, "Parking property not found"));
     }
 
     // Check if slot exists in the layout data
@@ -46,12 +45,12 @@ exports.createBooking = async (req, res) => {
     }
 
     if (!slotExists) {
-      return res.status(404).json({ message: "Parking slot not found" });
+      return next(new (require("../util/ApiError"))(404, "Parking slot not found"));
     }
 
-    // Check if slot is available (for layout-based slots)
+
     if (slotInfo?.status === 'booked' || slotInfo?.isBooked) {
-      return res.status(400).json({ message: "Slot already booked" });
+      return next(new (require("../util/ApiError"))(400, "Slot already booked"));
     }
 
     const start = startTime ? new Date(startTime) : new Date();
@@ -59,43 +58,42 @@ exports.createBooking = async (req, res) => {
 
     const booking = new Booking({
       user: req.user.id,
-      slot: slotId, // Store the slot ID/reference
+      slot: slotId, 
       property: property,
       startTime: start,
       endTime: end,
       totalAmount,
       status: "confirmed",
-      // Store additional slot info for reference
       slotInfo: slotData || slotInfo
     });
 
     await booking.save();
 
-    // Mark slot as booked in the layout data
     if (parkingProperty.layoutData && parkingProperty.layoutData.slots && parkingProperty.layoutData.slots[slotId]) {
       parkingProperty.layoutData.slots[slotId].status = 'booked';
       await parkingProperty.save();
       console.log("✅ Slot marked as booked in layout data");
     } else if (slotInfo?.isBooked !== undefined) {
-      // Legacy PropertySlot update
+      
       slotInfo.isBooked = true;
       await slotInfo.save();
       console.log("✅ Legacy slot marked as booked");
     }
 
-    res.json({ message: "Booking created successfully", booking });
+    res.json({ success: true, message: "Booking created successfully", booking });
   } catch (error) {
     console.error("Create Booking Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server Error"));
   }
 };
 
 // GET ALL BOOKINGS OF USER
-exports.getMyBookings = async (req, res) => {
+exports.getMyBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find({ user: req.user.id });
     
-    // Populate both slot and property information
+   
     const populatedBookings = [];
     
     for (const booking of bookings) {
@@ -170,20 +168,21 @@ exports.getMyBookings = async (req, res) => {
     res.json(populatedBookings);
   } catch (error) {
     console.error("Get Bookings Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server Error"));
   }
 };
 
 // CANCEL BOOKING
-exports.cancelBooking = async (req, res) => {
+exports.cancelBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
 
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (!booking) return next(new (require("../util/ApiError"))(404, "Booking not found"));
 
     if (booking.user.toString() !== req.user.id)
-      return res.status(403).json({ message: "Not authorized" });
+      return next(new (require("../util/ApiError"))(403, "Not authorized"));
 
     booking.status = "cancelled";
     await booking.save();
@@ -195,20 +194,22 @@ exports.cancelBooking = async (req, res) => {
       await slot.save();
     }
 
-    res.json({ message: "Booking cancelled", booking });
+    res.json({ success: true, message: "Booking cancelled", booking });
   } catch (error) {
     console.error("Cancel Booking Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server Error"));
   }
 };
 
 // GET ALL BOOKINGS (ADMIN)
-exports.getAllBookings = async (req, res) => {
+exports.getAllBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find().populate("slot user");
     res.json(bookings);
   } catch (error) {
     console.error("Get All Bookings Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server Error"));
   }
 };

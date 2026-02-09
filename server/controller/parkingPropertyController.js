@@ -2,17 +2,17 @@ const ParkingProperty = require("../model/ParkingProperty");
 const Booking = require("../model/Booking");
 const PropertySlot = require("../model/PropertySlot");
 
-// Rental: Add a new parking property
+
 exports.addProperty = async (req, res) => {
   try {
-    console.log("🔍 DEBUG: addProperty called with request body:", JSON.stringify(req.body, null, 2));
+    console.log("DEBUG: addProperty called with request body:", JSON.stringify(req.body, null, 2));
     console.log("👤 DEBUG: User from token:", req.user);
     
     const { name, address, fullAddress, contactNumber, carSlots, bikeSlots, pricePerHour, photos, location, layoutData } = req.body;
     const rentalId = req.user._id || req.user.id;
     
-    console.log("🆔 DEBUG: Rental ID extracted:", rentalId);
-    console.log("📍 DEBUG: Address data received:", {
+    console.log("DEBUG: Rental ID extracted:", rentalId);
+    console.log("DEBUG: Address data received:", {
       address: address,
       fullAddress: fullAddress,
       isSelectedLocation: fullAddress === "Selected location",

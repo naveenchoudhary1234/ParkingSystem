@@ -1,5 +1,4 @@
-// Script to backfill slots for all approved properties
-// Usage: node scripts/backfillSlots.js
+
 
 const mongoose = require('mongoose');
 const ParkingProperty = require('../model/ParkingProperty');
@@ -14,7 +13,6 @@ async function backfillSlots() {
   for (const property of properties) {
     const existingSlots = await PropertySlot.find({ property: property._id });
     if (existingSlots.length === 0) {
-      // Car slots
       for (let i = 1; i <= property.carSlots; i++) {
         await PropertySlot.create({
           property: property._id,
@@ -25,7 +23,7 @@ async function backfillSlots() {
         });
         created++;
       }
-      // Bike slots
+      
       for (let i = 1; i <= property.bikeSlots; i++) {
         await PropertySlot.create({
           property: property._id,

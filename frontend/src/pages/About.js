@@ -107,7 +107,7 @@ export default function About() {
                 <div className="avatar-placeholder">JD</div>
               </div>
               <div className="team-info">
-                <h3>John Doe</h3>
+                <h3>Naveen Choudhary</h3>
                 <p className="team-role">CEO & Founder</p>
                 <p className="team-bio">
                   Visionary leader with 10+ years in tech, passionate about solving urban mobility challenges.

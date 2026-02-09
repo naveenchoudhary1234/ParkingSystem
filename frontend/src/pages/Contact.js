@@ -96,7 +96,7 @@ export default function Contact() {
               <div className="contact-card">
                 <div className="contact-icon">📞</div>
                 <h3>Call Us</h3>
-                <p>+1 (555) 123-4567</p>
+                <p>+91 8168467324</p>
                 <p className="contact-description">
                   Speak directly with our support team Monday through Friday, 9am-6pm EST.
                 </p>
@@ -105,7 +105,7 @@ export default function Contact() {
               <div className="contact-card">
                 <div className="contact-icon">📍</div>
                 <h3>Visit Us</h3>
-                <p>123 Parking Street<br />Tech City, TC 12345</p>
+                <p>Chitkara University Road<br />Tech City</p>
                 <p className="contact-description">
                   Stop by our office for an in-person consultation or meeting.
                 </p>

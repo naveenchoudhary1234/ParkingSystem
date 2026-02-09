@@ -18,13 +18,13 @@ exports.createOrder = async (req, res) => {
     let receipt;
     
     if (bookingId) {
-      // Existing booking flow
+      
       const booking = await Booking.findById(bookingId);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
-      orderAmount = booking.totalAmount * 100; // Convert to paise
+      orderAmount = booking.totalAmount * 100; 
       receipt = `order_rcptid_${booking._id}`;
     } else if (amount && bookingData) {
-      // New booking flow - create order before booking
+      
       orderAmount = amount * 100; // Convert to paise
       receipt = `order_rcptid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     } else {

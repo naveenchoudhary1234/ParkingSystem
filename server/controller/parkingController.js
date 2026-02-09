@@ -1,10 +1,10 @@
 const ParkingSlot = require("../model/ParkingSlot");
 
 
-// Only admin can add slot (should be handled in parkingSystemController now)
-exports.addParkingSlot = async (req, res) => {
-  return res.status(403).json({ error: "Add slot only via parking system as admin." });
-};
+// // Only admin can add slot (should be handled in parkingSystemController now)
+// exports.addParkingSlot = async (req, res) => {
+//   return res.status(403).json({ error: "Add slot only via parking system as admin." });
+// };
 
 exports.getAvailableSlots = async (req, res) => {
   try {
