@@ -5,6 +5,7 @@ import ParkingLayoutDesigner from "../components/ParkingLayoutDesigner";
 import LocationSearchComponent from "../components/LocationSearchComponent";
 import GoogleMapPicker from "../components/GoogleMapPicker";
 import LayoutConsistencyChecker from "../components/LayoutConsistencyChecker";
+import { apiRequest } from "../utils/api";
 import "../styles/dashboard.css";
 import "../styles/layout-management.css";
 import "../styles/layout-management.css";
@@ -72,35 +73,15 @@ const RentalDashboard = () => {
       }
 
       console.log("🔄 Loading rental properties...");
-      const response = await fetch("http://localhost:5000/api/parking-property/my-properties", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load properties");
-      }
-
-      const myProperties = await response.json();
+      const myProperties = await apiRequest("/parking-property/my-properties");
       console.log("✅ Loaded rental properties:", myProperties);
 
       setProperties(myProperties);
-      
+
       // Load real-time rental statistics from the new API
       console.log("🔄 Loading rental statistics...");
-      const statsResponse = await fetch("http://localhost:5000/api/parking-property/rental-stats", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (statsResponse.ok) {
-        const stats = await statsResponse.json();
+      try {
+        const stats = await apiRequest("/parking-property/rental-stats");
         console.log("✅ Loaded rental stats:", stats);
         
         // Map backend stats correctly
@@ -118,15 +99,15 @@ const RentalDashboard = () => {
           carsBooked: stats.carsBooked || 0,
           bikesBooked: stats.bikesBooked || 0
         });
-      } else {
-        console.warn("Failed to load rental stats, using fallback calculation");
+      } catch (statsError) {
+        console.warn("Failed to load rental stats, using fallback calculation", statsError);
         // Fallback to old calculation if API fails
         const totalSlots = myProperties.reduce((sum, prop) => {
           return sum + (prop.carSlots || 0) + (prop.bikeSlots || 0);
         }, 0);
 
         const approvedProperties = myProperties.filter(prop => prop.approved);
-        const occupancyRate = myProperties.length > 0 ? 
+        const occupancyRate = myProperties.length > 0 ?
           Math.round((approvedProperties.length / myProperties.length) * 100) : 0;
 
         // Mock revenue calculation
@@ -416,21 +397,7 @@ const RentalDashboard = () => {
 
       console.log("🚀 Submitting property with layout for approval:", propertyData);
 
-      const response = await fetch("http://localhost:5000/api/parking-property/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(propertyData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to add property");
-      }
-
-      const added = await response.json();
+      const added = await apiRequest("/parking-property/add", "POST", propertyData);
       console.log("✅ Property with layout added successfully:", added);
       console.log("6️⃣ VERIFICATION - Property address in database:", {
         id: added._id,
@@ -505,21 +472,11 @@ const RentalDashboard = () => {
 
       console.log("🎯 Saving layout for property:", selectedPropertyForLayout._id, layoutConfig);
 
-      const response = await fetch(`http://localhost:5000/api/parking-property/${selectedPropertyForLayout._id}/layout`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ layoutData: layoutConfig })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save layout");
-      }
-
-      const updatedProperty = await response.json();
+      const updatedProperty = await apiRequest(
+        `/parking-property/${selectedPropertyForLayout._id}/layout`,
+        "PUT",
+        { layoutData: layoutConfig }
+      );
       console.log("✅ Layout saved successfully:", updatedProperty);
 
       // Update local state
@@ -550,19 +507,11 @@ const RentalDashboard = () => {
   // Toggle property active/inactive status
   const handleTogglePropertyStatus = async (propertyId, currentStatus) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/parking-property/toggle-status/${propertyId}`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ active: !currentStatus })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to toggle property status");
-      }
+      await apiRequest(
+        `/parking-property/toggle-status/${propertyId}`,
+        "PUT",
+        { active: !currentStatus }
+      );
 
       // Reload properties to get updated status
       loadRentalProperties();
@@ -581,18 +530,7 @@ const RentalDashboard = () => {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/parking-property/${propertyId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete property");
-      }
+      await apiRequest(`/parking-property/${propertyId}`, "DELETE");
 
       // Reload properties after deletion
       loadRentalProperties();
