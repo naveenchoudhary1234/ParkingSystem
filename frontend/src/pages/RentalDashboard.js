@@ -5,7 +5,7 @@ import ParkingLayoutDesigner from "../components/ParkingLayoutDesigner";
 import LocationSearchComponent from "../components/LocationSearchComponent";
 import GoogleMapPicker from "../components/GoogleMapPicker";
 import LayoutConsistencyChecker from "../components/LayoutConsistencyChecker";
-import { apiRequest } from "../utils/api";
+import { apiRequest } from "../api";
 import "../styles/dashboard.css";
 import "../styles/layout-management.css";
 import "../styles/layout-management.css";
