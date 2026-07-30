@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api";
+import { getWalletBalance } from "../services/walletService";
 import ParkingSlotSelector from "../components/ParkingSlotSelector";
 import LayoutConsistencyChecker from "../components/LayoutConsistencyChecker";
 import "../styles/booking.css";
@@ -20,6 +21,14 @@ export default function BookSlot() {
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // ✅ Wallet Payment
+  const [paymentMethod, setPaymentMethod] = useState("razorpay"); // 'razorpay' or 'wallet'
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  // ✅ Rewards Discount
+  const [rewardsDiscount, setRewardsDiscount] = useState(0); // Discount percentage
+  const [originalAmount, setOriginalAmount] = useState(0);
   
 
   useEffect(() => {
@@ -29,7 +38,29 @@ export default function BookSlot() {
       return;
     }
     loadParkingDetails();
+    fetchWalletBalance();
+    fetchRewardsDiscount();
   }, [parkingSystemId]);
+
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await getWalletBalance();
+      setWalletBalance(response.balance || 0);
+    } catch (error) {
+      console.error("Failed to fetch wallet balance:", error);
+    }
+  };
+
+  const fetchRewardsDiscount = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiRequest("/rewards/discount-percentage", "GET", null, token);
+      setRewardsDiscount(response.discountPercent || 0);
+    } catch (error) {
+      console.error("Failed to fetch rewards discount:", error);
+      setRewardsDiscount(0);
+    }
+  };
 
   const loadParkingDetails = async () => {
     try {
@@ -71,6 +102,19 @@ export default function BookSlot() {
 
   const getTotalAmount = () => {
     if (!selectedSlot || !parkingProperty) return 0;
+    const baseAmount = parkingProperty.pricePerHour * hours;
+
+    // Apply rewards discount
+    if (rewardsDiscount > 0) {
+      const discountAmount = (baseAmount * rewardsDiscount) / 100;
+      return Math.round(baseAmount - discountAmount);
+    }
+
+    return baseAmount;
+  };
+
+  const getOriginalAmount = () => {
+    if (!selectedSlot || !parkingProperty) return 0;
     return parkingProperty.pricePerHour * hours;
   };
 
@@ -96,8 +140,39 @@ export default function BookSlot() {
       const token = localStorage.getItem("token");
       const bookingAmount = hours * parkingProperty.pricePerHour;
 
-      // Create Razorpay order first
-  // Create Razorpay order
+      // ✅ Handle Wallet Payment
+      if (paymentMethod === "wallet") {
+        if (walletBalance < bookingAmount) {
+          setError(`Insufficient wallet balance. You need ₹${bookingAmount} but have ₹${walletBalance}`);
+          setBooking(false);
+          return;
+        }
+
+        // Book using wallet
+        const bookingData = {
+          slot: selectedSlot,
+          property: parkingSystemId,
+          hours: parseInt(hours),
+          totalAmount: bookingAmount,
+          paymentMethod: "wallet"
+        };
+
+        await apiRequest("/booking/create-with-wallet", "POST", bookingData, token);
+
+        setSuccess(`✅ Booking successful! ₹${bookingAmount} deducted from wallet.`);
+        await loadParkingDetails();
+        await fetchWalletBalance();
+        setSelectedSlot(null);
+
+        setTimeout(() => {
+          navigate("/bookings");
+        }, 2000);
+
+        setBooking(false);
+        return;
+      }
+
+      // ✅ Handle Razorpay Payment
       const orderResponse = await apiRequest("/payment/create-order", "POST", {
         amount: bookingAmount,
         bookingData: {
@@ -111,11 +186,8 @@ export default function BookSlot() {
         }
       }, token);
 
-      
-
-      // Configure Razorpay options
       const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY || "rzp_test_vsLHHCgamWA71m", // Your Razorpay public key
+        key: process.env.REACT_APP_RAZORPAY_KEY || "rzp_test_vsLHHCgamWA71m",
         amount: orderResponse.amount,
         currency: orderResponse.currency || "INR",
         name: "ParkingSystem",
@@ -142,7 +214,6 @@ export default function BookSlot() {
         }
       };
 
-      // Open Razorpay payment
       if (window.Razorpay) {
         const rzp = new window.Razorpay(options);
         rzp.open();
@@ -350,6 +421,146 @@ export default function BookSlot() {
             </div>
           )}
 
+          {/* ✅ Payment Method Selection */}
+          {selectedSlot && (
+            <div className="form-group">
+              <label className="form-label">💳 Payment Method *</label>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                marginTop: '12px',
+                width: '100%'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('razorpay')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    padding: '24px 20px',
+                    background: paymentMethod === 'razorpay' ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' : '#ffffff',
+                    border: paymentMethod === 'razorpay' ? '4px solid #10b981' : '3px solid #e5e7eb',
+                    borderRadius: '14px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    minHeight: '95px',
+                    position: 'relative',
+                    boxShadow: paymentMethod === 'razorpay' ? '0 8px 28px rgba(16, 185, 129, 0.35)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.25s ease',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (paymentMethod !== 'razorpay') {
+                      e.currentTarget.style.borderColor = '#9ca3af';
+                      e.currentTarget.style.transform = 'translateY(-3px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (paymentMethod !== 'razorpay') {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                    }
+                  }}
+                >
+                  {paymentMethod === 'razorpay' && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      background: '#10b981',
+                      color: 'white',
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 3px 10px rgba(16, 185, 129, 0.5)'
+                    }}>✓</span>
+                  )}
+                  <span style={{ fontSize: '54px', lineHeight: '1', flexShrink: 0 }}>💳</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, textAlign: 'left' }}>
+                    <span style={{ fontWeight: 700, color: paymentMethod === 'razorpay' ? '#065f46' : '#111827', fontSize: '18px', lineHeight: '1.3' }}>
+                      Card/UPI/Net Banking
+                    </span>
+                    <span style={{ fontSize: '15px', color: paymentMethod === 'razorpay' ? '#059669' : '#6b7280', fontWeight: paymentMethod === 'razorpay' ? 700 : 600 }}>
+                      Pay via Razorpay
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('wallet')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    padding: '24px 20px',
+                    background: paymentMethod === 'wallet' ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' : '#ffffff',
+                    border: paymentMethod === 'wallet' ? '4px solid #10b981' : '3px solid #e5e7eb',
+                    borderRadius: '14px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    minHeight: '95px',
+                    position: 'relative',
+                    boxShadow: paymentMethod === 'wallet' ? '0 8px 28px rgba(16, 185, 129, 0.35)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.25s ease',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (paymentMethod !== 'wallet') {
+                      e.currentTarget.style.borderColor = '#9ca3af';
+                      e.currentTarget.style.transform = 'translateY(-3px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (paymentMethod !== 'wallet') {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                    }
+                  }}
+                >
+                  {paymentMethod === 'wallet' && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      background: '#10b981',
+                      color: 'white',
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 3px 10px rgba(16, 185, 129, 0.5)'
+                    }}>✓</span>
+                  )}
+                  <span style={{ fontSize: '54px', lineHeight: '1', flexShrink: 0 }}>💰</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, textAlign: 'left' }}>
+                    <span style={{ fontWeight: 700, color: paymentMethod === 'wallet' ? '#065f46' : '#111827', fontSize: '18px', lineHeight: '1.3' }}>
+                      Wallet Balance: ₹{walletBalance}
+                    </span>
+                    <span style={{ fontSize: '15px', color: paymentMethod === 'wallet' ? '#059669' : '#6b7280', fontWeight: paymentMethod === 'wallet' ? 700 : 600 }}>
+                      {walletBalance >= getTotalAmount() ? '✅ Sufficient balance' : '❌ Insufficient balance'}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Total Amount */}
           {selectedSlot && parkingProperty && (
             <div className="booking-summary">
@@ -361,10 +572,28 @@ export default function BookSlot() {
                 <span>Duration:</span>
                 <span>{hours} hour{hours > 1 ? 's' : ''}</span>
               </div>
+              {rewardsDiscount > 0 && (
+                <>
+                  <div className="summary-row">
+                    <span>Subtotal:</span>
+                    <span>₹{getOriginalAmount()}</span>
+                  </div>
+                  <div className="summary-row" style={{ color: '#10b981', fontWeight: '600' }}>
+                    <span>🎁 Loyalty Discount ({rewardsDiscount}%):</span>
+                    <span>-₹{getOriginalAmount() - getTotalAmount()}</span>
+                  </div>
+                </>
+              )}
               <div className="summary-row total">
                 <span>Total Amount:</span>
                 <span>₹{getTotalAmount()}</span>
               </div>
+              {paymentMethod === 'wallet' && (
+                <div className="summary-row" style={{ color: walletBalance >= getTotalAmount() ? '#10b981' : '#ef4444' }}>
+                  <span>Wallet Balance After:</span>
+                  <span>₹{Math.max(0, walletBalance - getTotalAmount())}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -373,12 +602,16 @@ export default function BookSlot() {
           {success && <div className="success-message">✅ {success}</div>}
 
           {/* Submit Button */}
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn-book-slot"
-            disabled={!selectedSlot || booking}
+            disabled={!selectedSlot || booking || (paymentMethod === 'wallet' && walletBalance < getTotalAmount())}
           >
-            {booking ? '⏳ Processing Payment...' : `💳 Pay & Book - ₹${getTotalAmount()}`}
+            {booking ? '⏳ Processing...' :
+             paymentMethod === 'wallet' ?
+              `💰 Pay via Wallet - ₹${getTotalAmount()}` :
+              `💳 Pay & Book - ₹${getTotalAmount()}`
+            }
           </button>
         </form>
       </div>

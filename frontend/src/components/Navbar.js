@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import NotificationBell from "./NotificationBell"; // ✅ Batch 1: Notifications
 import "../styles/navbar.css";
 
 export default function Navbar() {
@@ -60,26 +61,26 @@ export default function Navbar() {
           >
             Contact
           </Link>
-          <Link 
-            to="/parking" 
+          <Link
+            to="/parking"
             className={`nav-link ${isActive('/parking') ? 'active' : ''}`}
             onClick={() => setIsMenuOpen(false)}
           >
             Find Parking
           </Link>
-          
+
           {isAuthenticated ? (
             <>
-              <Link 
-                to="/profile" 
+              <Link
+                to="/profile"
                 className={`nav-link ${isActive('/profile') ? 'active' : ''}`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 Profile
               </Link>
               {user?.role === "user" && (
-                <Link 
-                  to="/bookings" 
+                <Link
+                  to="/bookings"
                   className={`nav-link ${isActive('/bookings') ? 'active' : ''}`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -106,6 +107,10 @@ export default function Navbar() {
                   Owner Dashboard
                 </Link>
               )}
+
+              {/* ✅ Batch 1: Notification Bell */}
+              <NotificationBell />
+
               <button onClick={handleLogout} className="nav-btn logout-btn">
                 Logout
               </button>

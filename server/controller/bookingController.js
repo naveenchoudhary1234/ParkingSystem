@@ -1,17 +1,150 @@
 const Booking = require("../model/Booking");
 const ParkingSlot = require("../model/ParkingSlot");
 const PropertySlot = require("../model/PropertySlot");
+const { awardPointsForBooking } = require("../services/rewardsService");
+const { sendNotification } = require("../services/notificationService");
+
+// ✅ CREATE BOOKING WITH WALLET
+exports.createBookingWithWallet = async (req, res, next) => {
+  try {
+    const { slot, property, hours, totalAmount } = req.body;
+    const User = require("../model/User");
+    const WalletTransaction = require("../model/WalletTransaction");
+    const ParkingProperty = require("../model/ParkingProperty");
+
+    // Check wallet balance
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return next(new (require("../util/ApiError"))(404, "User not found"));
+    }
+
+    if ((user.wallet || 0) < totalAmount) {
+      return next(new (require("../util/ApiError"))(400, "Insufficient wallet balance"));
+    }
+
+    // Get property and slot
+    const parkingProperty = await ParkingProperty.findById(property);
+    if (!parkingProperty) {
+      return next(new (require("../util/ApiError"))(404, "Parking property not found"));
+    }
+
+    const slotId = slot?.id || slot?._id || slot;
+    let slotInfo = null;
+
+    if (parkingProperty.layoutData && parkingProperty.layoutData.slots) {
+      slotInfo = parkingProperty.layoutData.slots[slotId];
+      if (!slotInfo) {
+        return next(new (require("../util/ApiError"))(404, "Slot not found"));
+      }
+      if (slotInfo.status === 'booked' || slotInfo.isBooked) {
+        return next(new (require("../util/ApiError"))(400, "Slot already booked"));
+      }
+    }
+
+    // Deduct from wallet
+    user.wallet -= totalAmount;
+    await user.save();
+
+    // Create wallet transaction
+    await WalletTransaction.create({
+      user: user._id,
+      type: "debit",
+      amount: totalAmount,
+      description: `Parking booking at ${parkingProperty.name}`,
+      balanceAfter: user.wallet,
+      status: "completed"
+    });
+
+    // Create booking
+    const start = new Date();
+    const end = new Date(Date.now() + hours * 60 * 60 * 1000);
+
+    const booking = new Booking({
+      user: req.user.id,
+      slot: slotId,
+      property: property,
+      startTime: start,
+      endTime: end,
+      totalAmount,
+      status: "confirmed",
+      slotInfo: slotInfo || { slotNumber: slotId }
+    });
+
+    await booking.save();
+
+    // Mark slot as booked
+    if (parkingProperty.layoutData && parkingProperty.layoutData.slots && parkingProperty.layoutData.slots[slotId]) {
+      parkingProperty.layoutData.slots[slotId].status = 'booked';
+      parkingProperty.layoutData.slots[slotId].isBooked = true;
+      await parkingProperty.save();
+    }
+
+    // ✅ Award loyalty points for completed booking
+    const rewardResult = await awardPointsForBooking(req.user.id, totalAmount);
+
+    // ✅ Send booking confirmation notification
+    console.log("🔔 Sending booking confirmation notification to user:", req.user.id);
+    try {
+      const notificationResult = await sendNotification(req.user.id, {
+        type: 'booking_confirmed',
+        title: '🎉 Booking Confirmed!',
+        message: `Your parking slot at ${parkingProperty.name} has been confirmed. Booking ID: ${booking._id.toString().slice(-6).toUpperCase()}`,
+        priority: 'high',
+        relatedBooking: booking._id,
+        relatedProperty: parkingProperty._id,
+        actionUrl: '/bookings',
+        actionText: 'View Booking'
+      });
+      console.log("✅ Notification sent successfully:", notificationResult ? "Created" : "Failed");
+    } catch (notifError) {
+      console.error("❌ Notification error:", notifError);
+    }
+
+    // ✅ Schedule reminder notification (15 mins before booking ends)
+    const reminderTime = new Date(booking.endTime.getTime() - 15 * 60 * 1000);
+    if (reminderTime > new Date()) {
+      setTimeout(async () => {
+        await sendNotification(req.user.id, {
+          type: 'booking_ending_soon',
+          title: '⏰ Parking Ending Soon',
+          message: `Your parking at ${parkingProperty.name} ends in 15 minutes. Please return to your vehicle.`,
+          priority: 'urgent',
+          relatedBooking: booking._id,
+          actionUrl: '/bookings',
+          actionText: 'Extend Booking'
+        });
+      }, reminderTime.getTime() - Date.now());
+    }
+
+    res.json({
+      success: true,
+      message: "Booking created successfully via wallet",
+      booking,
+      walletBalance: user.wallet,
+      loyaltyPoints: rewardResult ? {
+        earned: rewardResult.pointsEarned,
+        total: rewardResult.totalPoints,
+        tier: rewardResult.tier.name,
+        discount: rewardResult.tier.discount
+      } : null
+    });
+  } catch (error) {
+    console.error("Create Wallet Booking Error:", error);
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server Error"));
+  }
+};
 
 // CREATE BOOKING
 exports.createBooking = async (req, res, next) => {
   try {
     const { slot, property, hours, totalAmount, startTime, endTime } = req.body;
-    
+
     console.log("Creating booking with data:", { slot, property, hours, totalAmount });
 
     const slotId = slot?.id || slot?._id || slot;
     const slotData = typeof slot === 'object' ? slot : null;
-    
+
     console.log("🔍 Extracted slot ID:", slotId, "Slot data:", slotData);
 
     
@@ -177,24 +310,114 @@ exports.getMyBookings = async (req, res, next) => {
 exports.cancelBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
+    const User = require("../model/User");
+    const WalletTransaction = require("../model/WalletTransaction");
+    const ParkingProperty = require("../model/ParkingProperty");
 
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId).populate('property');
     if (!booking) return next(new (require("../util/ApiError"))(404, "Booking not found"));
 
     if (booking.user.toString() !== req.user.id)
       return next(new (require("../util/ApiError"))(403, "Not authorized"));
 
+    // Check if booking is already cancelled
+    if (booking.status === "cancelled") {
+      return next(new (require("../util/ApiError"))(400, "Booking is already cancelled"));
+    }
+
+    // Check 10-minute cancellation window
+    const bookingCreatedAt = new Date(booking.createdAt);
+    const now = new Date();
+    const diffMinutes = (now - bookingCreatedAt) / (1000 * 60);
+
+    if (diffMinutes > 10) {
+      return next(new (require("../util/ApiError"))(400, "Cancellation window expired. You can only cancel within 10 minutes of booking."));
+    }
+
+    // Update booking status
     booking.status = "cancelled";
     await booking.save();
 
-    // Free the parking slot
-    const slot = await ParkingSlot.findById(booking.slot);
-    if (slot) {
-      slot.isBooked = false;
-      await slot.save();
+    // Free the parking slot in layout (if it's a layout slot)
+    if (booking.property && booking.slotInfo) {
+      const property = await ParkingProperty.findById(booking.property._id);
+      if (property && property.layoutData && Array.isArray(property.layoutData)) {
+        const slotToFree = property.layoutData.find(slot =>
+          slot.slotNumber === booking.slotInfo.slotNumber ||
+          slot.id === booking.slotInfo.id
+        );
+
+        if (slotToFree && slotToFree.isBooked) {
+          slotToFree.isBooked = false;
+          await property.save();
+          console.log(`✅ Slot ${slotToFree.slotNumber} freed in property ${property.name}`);
+        }
+      } else {
+        console.log('⚠️ LayoutData is not an array or does not exist, skipping slot freeing in layout');
+      }
     }
 
-    res.json({ success: true, message: "Booking cancelled", booking });
+    // Free the parking slot (legacy slot system)
+    try {
+      const slot = await ParkingSlot.findById(booking.slot);
+      if (slot) {
+        slot.isBooked = false;
+        await slot.save();
+        console.log(`✅ Legacy slot freed`);
+      }
+    } catch (err) {
+      // Slot might not exist in legacy system, that's okay
+      console.log('Legacy slot not found, skipping...');
+    }
+
+    // Add refund amount to user's wallet
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return next(new (require("../util/ApiError"))(404, "User not found"));
+    }
+
+    const refundAmount = booking.totalAmount;
+    user.wallet = (user.wallet || 0) + refundAmount;
+    await user.save();
+
+    // Create wallet transaction record
+    await WalletTransaction.create({
+      user: user._id,
+      type: "credit",
+      amount: refundAmount,
+      description: `Refund for cancelled booking at ${booking.property?.name || 'parking'}`,
+      relatedBooking: booking._id,
+      balanceAfter: user.wallet,
+      status: "completed"
+    });
+
+    console.log(`💰 Refund of ₹${refundAmount} added to wallet. New balance: ₹${user.wallet}`);
+
+    // ✅ Send cancellation notification
+    console.log("🔔 Sending cancellation notification to user:", req.user.id);
+    try {
+      await sendNotification(req.user.id, {
+        type: 'booking_cancelled',
+        title: '❌ Booking Cancelled',
+        message: `Your parking booking at ${booking.property?.name || 'parking location'} has been cancelled. ₹${refundAmount} has been refunded to your wallet.`,
+        priority: 'medium',
+        relatedBooking: booking._id,
+        relatedProperty: booking.property?._id,
+        actionUrl: '/profile',
+        actionText: 'View Wallet'
+      });
+      console.log("✅ Cancellation notification sent");
+    } catch (notifError) {
+      console.error("❌ Cancellation notification error:", notifError);
+    }
+
+    res.json({
+      success: true,
+      message: `Booking cancelled successfully. ₹${refundAmount} has been added to your wallet.`,
+      booking,
+      walletBalance: user.wallet,
+      refundAmount
+    });
   } catch (error) {
     console.error("Cancel Booking Error:", error);
     const ApiError = require("../util/ApiError");

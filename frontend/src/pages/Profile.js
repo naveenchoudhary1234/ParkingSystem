@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../api";
+import { getWalletBalance, getWalletTransactions, addMoneyToWallet } from "../services/walletService";
 import LayoutConsistencyChecker from "../components/LayoutConsistencyChecker";
 import "../styles/improved-profile.css";
 
@@ -9,6 +10,9 @@ const Profile = () => {
   const [bookings, setBookings] = useState([]);
   const [propertyBookings, setPropertyBookings] = useState([]); // For owners' property bookings
   const [properties, setProperties] = useState([]); // For owners
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletTransactions, setWalletTransactions] = useState([]);
+  const [rewardsSummary, setRewardsSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -19,7 +23,34 @@ const Profile = () => {
     if (user?.role === 'owner') {
       fetchOwnerProperties();
     }
+    if (user?.role === 'user') {
+      fetchWalletData();
+      fetchRewardsData();
+    }
   }, [user?.role]);
+
+  const fetchWalletData = async () => {
+    try {
+      const [balanceRes, transactionsRes] = await Promise.all([
+        getWalletBalance(),
+        getWalletTransactions()
+      ]);
+      setWalletBalance(balanceRes.balance || 0);
+      setWalletTransactions(transactionsRes.transactions || []);
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error);
+    }
+  };
+
+  const fetchRewardsData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiRequest("/rewards/summary", "GET", null, token);
+      setRewardsSummary(response.rewards);
+    } catch (error) {
+      console.error('Failed to fetch rewards data:', error);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -237,8 +268,142 @@ const Profile = () => {
     window.location.href = "/login";
   };
 
+  // ✅ Edit Profile State
+  const [editMode, setEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    address: ''
+  });
+
+  // ✅ Add Money to Wallet State
+  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
+  const [addMoneyAmount, setAddMoneyAmount] = useState('');
+
   const handleEditProfile = () => {
-    alert("Edit Profile feature - this would open a form to edit user information");
+    setEditFormData({
+      name: user.name || '',
+      phone: user.phone || '',
+      address: user.address || ''
+    });
+    setEditMode(true);
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Updating profile with data:", editFormData);
+
+      const response = await apiRequest("/auth/profile", "PUT", editFormData, token);
+
+      console.log("Profile update response:", response);
+
+      setUser(response.user);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      setEditMode(false);
+      alert("✅ Profile updated successfully!");
+
+      // Refresh user data
+      await fetchUserData();
+    } catch (err) {
+      console.error("Profile update error:", err);
+      alert("Failed to update profile: " + err.message);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
+  };
+
+  // ✅ Add Money to Wallet via Razorpay
+  const handleAddMoney = async () => {
+    const amount = parseFloat(addMoneyAmount);
+
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    if (amount < 10) {
+      alert("Minimum amount to add is ₹10");
+      return;
+    }
+
+    if (amount > 50000) {
+      alert("Maximum amount to add is ₹50,000");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      // Create Razorpay order for wallet topup
+      const orderResponse = await apiRequest("/payment/create-order", "POST", {
+        amount: amount,
+        bookingData: {
+          type: "wallet_topup",
+          description: `Add ₹${amount} to wallet`
+        }
+      }, token);
+
+      // Configure Razorpay options
+      const options = {
+        key: process.env.REACT_APP_RAZORPAY_KEY || "rzp_test_vsLHHCgamWA71m",
+        amount: orderResponse.amount,
+        currency: orderResponse.currency || "INR",
+        name: "ParkEasy Wallet",
+        description: `Add ₹${amount} to your wallet`,
+        order_id: orderResponse.orderId,
+        handler: async function (response) {
+          try {
+            // Verify payment
+            await apiRequest("/payment/verify", "POST", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            }, token);
+
+            // Add money to wallet after successful payment
+            const walletResponse = await addMoneyToWallet(amount, `Payment ID: ${response.razorpay_payment_id}`);
+            setWalletBalance(walletResponse.balance);
+            alert(`✅ Payment successful! ₹${amount} added to your wallet.`);
+            setShowAddMoneyModal(false);
+            setAddMoneyAmount('');
+
+            // Refresh wallet data
+            await fetchWalletData();
+          } catch (err) {
+            alert("Payment verification failed: " + err.message);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || "9999999999"
+        },
+        theme: {
+          color: "#10b981"
+        },
+        modal: {
+          ondismiss: function() {
+            console.log("Payment cancelled");
+            alert("Payment was cancelled. No money was added to wallet.");
+          }
+        }
+      };
+
+      // Open Razorpay payment
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+        setShowAddMoneyModal(false); // Close our modal while Razorpay modal opens
+      } else {
+        throw new Error("Razorpay SDK not loaded. Please refresh the page.");
+      }
+
+    } catch (err) {
+      alert("Failed to initiate payment: " + err.message);
+    }
   };
 
   if (loading) {
@@ -293,7 +458,7 @@ const Profile = () => {
         ];
       default:
         return [
-          { icon: "🅿️", title: "Book Parking", desc: "Find & book parking spots", link: "/book-slot" },
+          { icon: "🅿️", title: "Book Parking", desc: "Find & book parking spots", link: "/parking" },
           { icon: "📋", title: "My Bookings", desc: "View your bookings", link: "/bookings" },
           { icon: "❤️", title: "Favorites", desc: "Your saved spots", link: "/favorites" },
           { icon: "🎁", title: "Rewards", desc: "Loyalty points & offers", link: "/rewards" }
@@ -380,6 +545,109 @@ const Profile = () => {
           </div>
         );
 
+      case "wallet":
+        return (
+          <div className="tab-content">
+            <div className="content-section">
+              <h3>💰 My Wallet</h3>
+
+              {/* Wallet Balance Card */}
+              <div className="wallet-balance-card">
+                <div className="balance-info">
+                  <span className="balance-label">Available Balance</span>
+                  <span className="balance-amount">₹{walletBalance}</span>
+                </div>
+                <div className="balance-actions">
+                  <button className="btn-wallet-primary" onClick={() => setShowAddMoneyModal(true)}>
+                    💰 Add Money
+                  </button>
+                  <button className="btn-secondary" onClick={() => alert('Coming soon!')}>
+                    💸 Withdraw
+                  </button>
+                </div>
+              </div>
+
+              {/* Add Money Modal */}
+              {showAddMoneyModal && (
+                <div className="modal-overlay" onClick={() => setShowAddMoneyModal(false)}>
+                  <div className="modal-content add-money-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                      <h2>💰 Add Money to Wallet</h2>
+                      <button className="modal-close" onClick={() => setShowAddMoneyModal(false)}>×</button>
+                    </div>
+                    <div className="modal-body">
+                      <p style={{ color: '#64748b', marginBottom: '20px' }}>
+                        Add money to your wallet for quick and seamless parking bookings. No payment hassles at checkout!
+                      </p>
+
+                      <div className="quick-amounts">
+                        <button className="quick-amount-btn" onClick={() => setAddMoneyAmount('100')}>₹100</button>
+                        <button className="quick-amount-btn" onClick={() => setAddMoneyAmount('500')}>₹500</button>
+                        <button className="quick-amount-btn" onClick={() => setAddMoneyAmount('1000')}>₹1,000</button>
+                        <button className="quick-amount-btn" onClick={() => setAddMoneyAmount('2000')}>₹2,000</button>
+                      </div>
+
+                      <div className="form-group" style={{ marginTop: '20px' }}>
+                        <label>Enter Amount (₹10 - ₹50,000)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={addMoneyAmount}
+                          onChange={(e) => setAddMoneyAmount(e.target.value)}
+                          placeholder="Enter amount"
+                          min="10"
+                          max="50000"
+                        />
+                      </div>
+                    </div>
+                    <div className="modal-footer">
+                      <button className="btn-secondary" onClick={() => setShowAddMoneyModal(false)}>Cancel</button>
+                      <button className="btn-primary" onClick={handleAddMoney}>
+                        Add ₹{addMoneyAmount || '0'} to Wallet
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Transaction History */}
+              <h4 style={{ marginTop: '30px', marginBottom: '15px' }}>Transaction History</h4>
+              {walletTransactions.length > 0 ? (
+                <div className="transactions-list">
+                  {walletTransactions.map((txn) => (
+                    <div key={txn._id} className="transaction-item">
+                      <div className="transaction-icon">
+                        {txn.type === 'credit' ? '💵' : '💸'}
+                      </div>
+                      <div className="transaction-info">
+                        <h5>{txn.description}</h5>
+                        <p className="transaction-date">
+                          {new Date(txn.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="transaction-amount">
+                        <span className={`amount ${txn.type}`}>
+                          {txn.type === 'credit' ? '+' : '-'}₹{txn.amount}
+                        </span>
+                        <span className="balance-after">
+                          Balance: ₹{txn.balanceAfter}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>No transactions yet</p>
+                  <p style={{ fontSize: '14px', color: '#666' }}>
+                    When you cancel bookings, refunds will appear here
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       case "favorites":
         return (
           <div className="tab-content">
@@ -412,53 +680,97 @@ const Profile = () => {
         return (
           <div className="tab-content">
             <div className="content-section">
-              <h3>Rewards & Loyalty Points</h3>
-              <div className="rewards-summary">
-                <div className="reward-card">
-                  <div className="reward-icon">🎁</div>
-                  <div className="reward-info">
-                    <h4>Total Points</h4>
-                    <p className="reward-value">{stats.totalBookings * 10}</p>
-                  </div>
-                </div>
-                <div className="reward-card">
-                  <div className="reward-icon">🏆</div>
-                  <div className="reward-info">
-                    <h4>Tier Status</h4>
-                    <p className="reward-value">
-                      {stats.totalBookings >= 20 ? 'Gold' : stats.totalBookings >= 10 ? 'Silver' : 'Bronze'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="rewards-list">
-                <div className="reward-item">
-                  <div className="reward-icon">🎯</div>
-                  <div className="reward-info">
-                    <h4>Frequent Parker</h4>
-                    <p>Complete 10 bookings to unlock 10% discount</p>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{width: `${Math.min((stats.totalBookings / 10) * 100, 100)}%`}}
-                      ></div>
+              <h3>🎁 Rewards & Loyalty Points</h3>
+              {!rewardsSummary ? (
+                <div className="loading-state">Loading rewards...</div>
+              ) : (
+                <>
+                  <div className="rewards-summary">
+                    <div className="reward-card">
+                      <div className="reward-icon">🎁</div>
+                      <div className="reward-info">
+                        <h4>Total Points</h4>
+                        <p className="reward-value">{rewardsSummary.points || 0}</p>
+                        <small>{rewardsSummary.pointsToNextTier > 0 ? `${rewardsSummary.pointsToNextTier} points to ${rewardsSummary.nextTier}` : 'Max tier reached!'}</small>
+                      </div>
+                    </div>
+                    <div className="reward-card">
+                      <div className="reward-icon">🏆</div>
+                      <div className="reward-info">
+                        <h4>Tier Status</h4>
+                        <p className="reward-value">{rewardsSummary.tier || 'Bronze'}</p>
+                        <small>{rewardsSummary.discount > 0 ? `${rewardsSummary.discount}% discount on bookings` : 'Earn points to unlock discounts'}</small>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="reward-item">
-                  <div className="reward-icon">⭐</div>
-                  <div className="reward-info">
-                    <h4>Monthly Challenge</h4>
-                    <p>Book 5 parking spots this month</p>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{width: `${Math.min((stats.thisMonthBookings / 5) * 100, 100)}%`}}
-                      ></div>
+                </>
+              )}
+
+              {rewardsSummary && (
+                <>
+                  <h4 style={{marginTop: '30px'}}>📊 How It Works</h4>
+                  <div className="rewards-list">
+                    <div className="reward-item">
+                      <div className="reward-icon">🎯</div>
+                      <div className="reward-info">
+                        <h4>Earn 50 Points per Booking</h4>
+                        <p>Complete a parking booking and earn 50 loyalty points automatically!</p>
+                      </div>
+                    </div>
+
+                    <div className="reward-item">
+                      <div className="reward-icon" style={{fontSize: '32px'}}>🥉</div>
+                      <div className="reward-info">
+                        <h4>Silver Tier - 300 Points</h4>
+                        <p>Get <strong>10% discount</strong> on all future bookings</p>
+                        {rewardsSummary.points < 300 && (
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{width: `${Math.min((rewardsSummary.points / 300) * 100, 100)}%`}}
+                            ></div>
+                          </div>
+                        )}
+                        {rewardsSummary.points >= 300 && <span style={{color: '#10b981', fontWeight: 'bold'}}>✅ Unlocked!</span>}
+                      </div>
+                    </div>
+
+                    <div className="reward-item">
+                      <div className="reward-icon" style={{fontSize: '32px'}}>🥇</div>
+                      <div className="reward-info">
+                        <h4>Gold Tier - 500 Points</h4>
+                        <p>Get <strong>15% discount</strong> on all future bookings</p>
+                        {rewardsSummary.points < 500 && (
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{width: `${Math.min((rewardsSummary.points / 500) * 100, 100)}%`}}
+                            ></div>
+                          </div>
+                        )}
+                        {rewardsSummary.points >= 500 && <span style={{color: '#10b981', fontWeight: 'bold'}}>✅ Unlocked!</span>}
+                      </div>
+                    </div>
+
+                    <div className="reward-item">
+                      <div className="reward-icon" style={{fontSize: '32px'}}>💎</div>
+                      <div className="reward-info">
+                        <h4>Platinum Tier - 1000 Points</h4>
+                        <p>Get <strong>20% discount</strong> on all future bookings</p>
+                        {rewardsSummary.points < 1000 && (
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{width: `${Math.min((rewardsSummary.points / 1000) * 100, 100)}%`}}
+                            ></div>
+                          </div>
+                        )}
+                        {rewardsSummary.points >= 1000 && <span style={{color: '#10b981', fontWeight: 'bold'}}>✅ Unlocked!</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         );
@@ -613,11 +925,56 @@ const Profile = () => {
               <div className="settings-grid">
                 <div className="setting-item">
                   <h4>Profile Information</h4>
-                  <p>Update your personal information</p>
-                  <p>Name: {user.name}</p>
-                  <p>Email: {user.email}</p>
-                  <p>Phone: {user.phone || 'Not provided'}</p>
-                  <button className="btn-primary" onClick={handleEditProfile}>Edit Profile</button>
+                  {!editMode ? (
+                    <>
+                      <p>Update your personal information</p>
+                      <p><strong>Name:</strong> {user.name}</p>
+                      <p><strong>Email:</strong> {user.email}</p>
+                      <p><strong>Phone:</strong> {user.phone || 'Not provided'}</p>
+                      <p><strong>Address:</strong> {user.address || 'Not provided'}</p>
+                      <button className="btn-primary" onClick={handleEditProfile}>Edit Profile</button>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ marginBottom: '15px' }}>Edit your profile information</p>
+                      <div className="edit-form">
+                        <div className="form-group">
+                          <label>Name:</label>
+                          <input
+                            type="text"
+                            value={editFormData.name}
+                            onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                            placeholder="Enter your name"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Phone:</label>
+                          <input
+                            type="tel"
+                            value={editFormData.phone}
+                            onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                            placeholder="Enter your phone number"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Address:</label>
+                          <input
+                            type="text"
+                            value={editFormData.address}
+                            onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                            placeholder="Enter your address"
+                            className="form-input"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                          <button className="btn-primary" onClick={handleSaveProfile}>💾 Save</button>
+                          <button className="btn-secondary" onClick={handleCancelEdit}>✖ Cancel</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="setting-item">
                   <h4>Notification Preferences</h4>
@@ -658,21 +1015,59 @@ const Profile = () => {
           <span className="user-role">{user.role}</span>
         </div>
         <div className="profile-actions">
-          <button className="btn-edit" onClick={handleEditProfile}>Edit Profile</button>
+          <button className="btn-edit" onClick={() => { setActiveTab('settings'); handleEditProfile(); }}>Edit Profile</button>
           <button className="btn-secondary" onClick={handleLogout}>Logout</button>
         </div>
       </div>
 
       <div className="quick-actions">
-        {getQuickActions().map((action, index) => (
-          <Link to={action.link} key={index} className="quick-action">
-            <div className="action-icon">{action.icon}</div>
-            <div className="action-info">
-              <h3>{action.title}</h3>
-              <p>{action.desc}</p>
-            </div>
-          </Link>
-        ))}
+        {getQuickActions().map((action, index) => {
+          // Special handling for Rewards & Favorites - switch to tab instead of navigate
+          if (action.title === "Rewards") {
+            return (
+              <div
+                key={index}
+                className="quick-action"
+                onClick={() => setActiveTab("rewards")}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="action-icon">{action.icon}</div>
+                <div className="action-info">
+                  <h3>{action.title}</h3>
+                  <p>{action.desc}</p>
+                </div>
+              </div>
+            );
+          }
+
+          if (action.title === "Favorites") {
+            return (
+              <div
+                key={index}
+                className="quick-action"
+                onClick={() => setActiveTab("favorites")}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="action-icon">{action.icon}</div>
+                <div className="action-info">
+                  <h3>{action.title}</h3>
+                  <p>{action.desc}</p>
+                </div>
+              </div>
+            );
+          }
+
+          // Regular links for other actions
+          return (
+            <Link to={action.link} key={index} className="quick-action">
+              <div className="action-icon">{action.icon}</div>
+              <div className="action-info">
+                <h3>{action.title}</h3>
+                <p>{action.desc}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="stats-grid">
@@ -803,19 +1198,25 @@ const Profile = () => {
         ) : (
           // User Tabs
           <>
-            <button 
+            <button
               className={`tab ${activeTab === "bookings" ? "active" : ""}`}
               onClick={() => setActiveTab("bookings")}
             >
               Bookings
             </button>
-            <button 
+            <button
+              className={`tab ${activeTab === "wallet" ? "active" : ""}`}
+              onClick={() => setActiveTab("wallet")}
+            >
+              💰 Wallet
+            </button>
+            <button
               className={`tab ${activeTab === "favorites" ? "active" : ""}`}
               onClick={() => setActiveTab("favorites")}
             >
               Favorites
             </button>
-            <button 
+            <button
               className={`tab ${activeTab === "rewards" ? "active" : ""}`}
               onClick={() => setActiveTab("rewards")}
             >

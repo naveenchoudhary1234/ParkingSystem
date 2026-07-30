@@ -222,20 +222,25 @@ exports.changePassword = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, address } = req.body;
+
+    console.log("📝 Update Profile Request:", { name, phone, address });
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { name, phone },
-      { new: true }
+      { name, phone, address },
+      { new: true, runValidators: true }
     ).select("-password");
 
     if (!user) return next(new (require("../util/ApiError"))(404, "User not found"));
 
-    res.json({ success: true, message: "Profile updated", user });
+    console.log("✅ Profile updated successfully:", user.email);
+
+    res.json({ success: true, message: "Profile updated successfully", user });
   } catch (error) {
     console.error("❌ Update Profile Error:", error.message);
     const ApiError = require("../util/ApiError");
-    next(new ApiError(500, "Server error"));
+    next(new ApiError(500, error.message || "Server error"));
   }
 };
 

@@ -1,4 +1,5 @@
-const API_BASE = "https://parkingsystem-hgzu.onrender.com/api";
+// Use local development server (change to deployed URL for production)
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
 export async function apiRequest(endpoint, method = "GET", data = null, token = null) {
   const url = `${API_BASE}${endpoint}`;

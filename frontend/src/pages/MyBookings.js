@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { apiRequest } from "../api";
+import StarRating from "../components/StarRating"; // ✅ Batch 1: Reviews
 import "../styles/modern.css";
 import "../styles/MyBookings.css";
 
@@ -9,6 +10,17 @@ export default function MyBookings() {
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [reviewData, setReviewData] = useState({
+    rating: 0,
+    title: "",
+    comment: "",
+    cleanliness: 0,
+    security: 0,
+    accessibility: 0,
+    valueForMoney: 0
+  });
   const user = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null;
 
   useEffect(() => {
@@ -25,6 +37,60 @@ export default function MyBookings() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Batch 1: Submit Review
+  const handleSubmitReview = async () => {
+    if (reviewData.rating === 0) {
+      alert("Please select a rating");
+      return;
+    }
+
+    try {
+      // Get property ID - handle both populated and non-populated cases
+      const propertyId = selectedBooking.property?._id || selectedBooking.property;
+      const propertyName = selectedBooking.property?.name || selectedBooking.propertyName || 'Parking Spot';
+
+      if (!propertyId) {
+        alert("Error: Property information is missing");
+        return;
+      }
+
+      await apiRequest("/reviews/create", "POST", {
+        propertyId: propertyId,
+        bookingId: selectedBooking._id,
+        rating: reviewData.rating,
+        title: reviewData.title || `Review for ${propertyName}`,
+        comment: reviewData.comment,
+        cleanliness: reviewData.cleanliness || reviewData.rating,
+        security: reviewData.security || reviewData.rating,
+        accessibility: reviewData.accessibility || reviewData.rating,
+        valueForMoney: reviewData.valueForMoney || reviewData.rating
+      });
+
+      alert("✅ Review submitted successfully!");
+      setShowReviewModal(false);
+      setReviewData({
+        rating: 0,
+        title: "",
+        comment: "",
+        cleanliness: 0,
+        security: 0,
+        accessibility: 0,
+        valueForMoney: 0
+      });
+      setSelectedBooking(null);
+
+      // Refresh bookings to show updated data
+      fetchMyBookings();
+    } catch (err) {
+      alert("Failed to submit review: " + err.message);
+    }
+  };
+
+  const openReviewModal = (booking) => {
+    setSelectedBooking(booking);
+    setShowReviewModal(true);
   };
 
   // Check if booking has expired
@@ -267,13 +333,23 @@ export default function MyBookings() {
 
           {/* History-specific actions */}
           {isHistory && currentStatus === 'completed' && (
-            <button 
-              className="action-btn success"
-              disabled
-              title="This booking has been completed"
-            >
-              ✅ Completed
-            </button>
+            <>
+              <button
+                className="action-btn success"
+                disabled
+                title="This booking has been completed"
+              >
+                ✅ Completed
+              </button>
+              {/* ✅ Batch 1: Review Button */}
+              <button
+                className="action-btn primary"
+                onClick={() => openReviewModal(booking)}
+                title="Write a review for this parking"
+              >
+                ⭐ Write Review
+              </button>
+            </>
           )}
         </div>
       </>
@@ -416,6 +492,106 @@ export default function MyBookings() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ✅ Batch 1: Review Modal */}
+      {showReviewModal && selectedBooking && (
+        <div className="modal-overlay" onClick={() => setShowReviewModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>⭐ Write a Review</h2>
+              <button className="modal-close" onClick={() => setShowReviewModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <h4>{selectedBooking.property?.name || selectedBooking.propertyName || 'Parking Spot'}</h4>
+              <p style={{ color: '#64748b', marginBottom: '20px' }}>
+                📍 {selectedBooking.property?.address || selectedBooking.propertyAddress || 'Location'}
+              </p>
+
+              <div className="form-group">
+                <label>Overall Rating *</label>
+                <StarRating
+                  rating={reviewData.rating}
+                  setRating={(r) => setReviewData({...reviewData, rating: r})}
+                  size="large"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Title</label>
+                <input
+                  type="text"
+                  placeholder="Great parking spot!"
+                  value={reviewData.title}
+                  onChange={(e) => setReviewData({...reviewData, title: e.target.value})}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Your Review</label>
+                <textarea
+                  placeholder="Share your experience..."
+                  value={reviewData.comment}
+                  onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
+                  rows="4"
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="rating-categories" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px' }}>Cleanliness</label>
+                  <StarRating
+                    rating={reviewData.cleanliness}
+                    setRating={(r) => setReviewData({...reviewData, cleanliness: r})}
+                    size="medium"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px' }}>Security</label>
+                  <StarRating
+                    rating={reviewData.security}
+                    setRating={(r) => setReviewData({...reviewData, security: r})}
+                    size="medium"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px' }}>Accessibility</label>
+                  <StarRating
+                    rating={reviewData.accessibility}
+                    setRating={(r) => setReviewData({...reviewData, accessibility: r})}
+                    size="medium"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px' }}>Value for Money</label>
+                  <StarRating
+                    rating={reviewData.valueForMoney}
+                    setRating={(r) => setReviewData({...reviewData, valueForMoney: r})}
+                    size="medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowReviewModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSubmitReview}
+              >
+                Submit Review
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

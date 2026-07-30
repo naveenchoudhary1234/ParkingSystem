@@ -22,7 +22,11 @@ import ParkingMap from "./pages/ParkingMap";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Favorites from "./pages/Favorites"; // ✅ Batch 1: Favorites page
+import NotificationPreferences from "./pages/NotificationPreferences"; // ✅ Batch 2
+import AIChatbot from "./components/AIChatbot";
 import './index.css';
+import './styles/responsive.css'; // ✅ Batch 1: Responsive design
 
 function App() {
 
@@ -59,9 +63,14 @@ function App() {
             <Route path="/parking-cards" element={<ParkingCards />} />
             <Route path="/parking-details/:id" element={<ProtectedRoute><ParkingDetails /></ProtectedRoute>} />
             <Route path="/map" element={<ParkingMap />} />
+            <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} /> {/* ✅ Batch 1 */}
+            <Route path="/notification-preferences" element={<ProtectedRoute><NotificationPreferences /></ProtectedRoute>} /> {/* ✅ Batch 2 */}
           </Routes>
           </div>
           <FooterConditional />
+
+          {/* AI Chatbot - Available on all pages */}
+          <AIChatbot />
         </div>
       </Router>
     </AuthProvider>

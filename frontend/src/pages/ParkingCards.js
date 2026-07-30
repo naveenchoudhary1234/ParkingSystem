@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { apiRequest } from "../api";
+import AIRecommendations from "../components/AIRecommendations";
+import StarRating from "../components/StarRating"; // ✅ Batch 1: Star ratings
+import FavoriteButton from "../components/FavoriteButton"; // ✅ Batch 1: Favorites
 import "../styles/parking-cards.css";
 
 export default function ParkingCards() {
@@ -161,6 +164,11 @@ export default function ParkingCards() {
           <div className="parking-grid">
             {filteredSpots.map((spot) => (
               <div key={spot._id} className="parking-card">
+                {/* ✅ Batch 1: Favorite Button */}
+                <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+                  <FavoriteButton propertyId={spot._id} size="medium" />
+                </div>
+
                 {/* Property image if available */}
                 {Array.isArray(spot.photos) && spot.photos.length > 0 && (
                   <div className="card-media">
@@ -175,9 +183,19 @@ export default function ParkingCards() {
                     ₹{spot.pricePerHour}<span>/hour</span>
                   </div>
                 </div>
-                
+
                 <div className="card-content">
                   <h3 className="spot-name">{spot.name}</h3>
+
+                  {/* ✅ Batch 1: Star Rating Display */}
+                  {spot.averageRating > 0 && (
+                    <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <StarRating rating={spot.averageRating} readonly={true} size="small" />
+                      <span style={{ fontSize: '13px', color: '#64748b' }}>
+                        ({spot.totalReviews} {spot.totalReviews === 1 ? 'review' : 'reviews'})
+                      </span>
+                    </div>
+                  )}
                   <div className="location-info">
                     <div className="location-icon">📍</div>
                     <p className="location-text">{spot.fullAddress || spot.address}</p>
@@ -232,6 +250,20 @@ export default function ParkingCards() {
             ))}
           </div>
 
+          {/* AI Recommendations - Show when we have parking spots */}
+          {filteredSpots.length > 0 && (
+            <AIRecommendations
+              parkingOptions={filteredSpots}
+              userContext={{
+                vehicleType: 'car',
+                location: searchQuery || 'your search'
+              }}
+              onSelectParking={(parking) => {
+                handleBookParking(parking._id);
+              }}
+            />
+          )}
+
           {/* Empty State */}
           {filteredSpots.length === 0 && !loading && (
             <div className="empty-state">
@@ -240,13 +272,13 @@ export default function ParkingCards() {
                 {searchQuery ? "No parking spots found" : "No parking available"}
               </h3>
               <p className="empty-description">
-                {searchQuery 
+                {searchQuery
                   ? `We couldn't find any parking spots matching "${searchQuery}". Try searching for a different location.`
                   : "There are no parking spots available at the moment. Please check back later."
                 }
               </p>
               {searchQuery && (
-                <button 
+                <button
                   className="btn btn-primary"
                   onClick={() => setSearchQuery("")}
                 >

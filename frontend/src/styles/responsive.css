@@ -1,0 +1,215 @@
+/* RESPONSIVE DESIGN - Mobile First Approach */
+
+/* Base Mobile Styles (Default) */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Container Responsive */
+.container {
+  width: 100%;
+  padding: 0 16px;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+/* Navbar Responsive */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 12px 16px !important;
+  }
+
+  .navbar-menu {
+    display: none;
+  }
+
+  .navbar-mobile-toggle {
+    display: block;
+  }
+
+  .navbar-menu.mobile-open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-menu.mobile-open a {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+}
+
+/* Grid Layouts Responsive */
+.grid-responsive {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Parking Cards Responsive */
+@media (max-width: 640px) {
+  .parking-card {
+    width: 100% !important;
+  }
+
+  .parking-card-image {
+    height: 180px !important;
+  }
+
+  .parking-card-title {
+    font-size: 16px !important;
+  }
+
+  .parking-card-details {
+    font-size: 13px !important;
+  }
+}
+
+/* Forms Responsive */
+@media (max-width: 640px) {
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px !important;
+  }
+}
+
+/* Modal Responsive */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95% !important;
+    margin: 20px auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto;
+  }
+
+  .modal-header h2 {
+    font-size: 18px !important;
+  }
+}
+
+/* Footer Responsive */
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* Profile Page Responsive */
+@media (max-width: 768px) {
+  .profile-container {
+    flex-direction: column;
+  }
+
+  .profile-sidebar {
+    width: 100% !important;
+    margin-bottom: 20px;
+  }
+
+  .profile-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .profile-tab {
+    flex-shrink: 0;
+  }
+}
+
+/* Dashboard Responsive */
+@media (max-width: 768px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-card {
+    padding: 16px !important;
+  }
+}
+
+/* Hide/Show Utilities */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+
+  .desktop-only {
+    display: block;
+  }
+}

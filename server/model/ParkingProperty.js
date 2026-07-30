@@ -15,8 +15,8 @@ const parkingPropertySchema = new mongoose.Schema({
   carSlots: { type: Number, required: true },
   bikeSlots: { type: Number, required: true },
   pricePerHour: { type: Number, required: true },
-  approved: { type: Boolean, default: false }, 
-  active: { type: Boolean, default: true }, 
+  approved: { type: Boolean, default: false },
+  active: { type: Boolean, default: true },
   
  
   layoutData: {

@@ -9,6 +9,9 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: String, enum: ["user", "owner", "rental"], default: "user" },
+  address: { type: String }, // User address (optional)
+  wallet: { type: Number, default: 0 }, // Wallet balance for refunds
+  loyaltyPoints: { type: Number, default: 0 }, // Loyalty/Reward points
   otp: { type: String },
   otpExpiry: { type: Date },
   resetToken: { type: String },

@@ -5,6 +5,7 @@ const router = express.Router();
 
 // Protected routes
 router.post("/create", authMiddleware, bookingController.createBooking);
+router.post("/create-with-wallet", authMiddleware, bookingController.createBookingWithWallet);
 router.get("/my-bookings", authMiddleware, bookingController.getMyBookings);
 router.delete("/cancel/:bookingId", authMiddleware, bookingController.cancelBooking);
 

@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../api";
+import StarRating from "../components/StarRating"; // ✅ Batch 1: Star ratings
+import FavoriteButton from "../components/FavoriteButton"; // ✅ Batch 1: Favorites
+import AIRecommendations from "../components/AIRecommendations"; // AI Recommendations
 import "../styles/parking.css";
 
 export default function Parking() {
@@ -23,6 +26,11 @@ export default function Parking() {
   const [showManualCoords, setShowManualCoords] = useState(false);
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
+
+  // ✅ Batch 1: Reviews modal state
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [propertyReviews, setPropertyReviews] = useState([]);
 
   // Get user's current location automatically
   const getCurrentLocation = useCallback(() => {
@@ -377,6 +385,20 @@ export default function Parking() {
     navigate(`/parking-details/${parkingSystem._id}`);
   };
 
+  // ✅ Batch 1: View Reviews
+  const handleViewReviews = async (parkingSystem) => {
+    setSelectedProperty(parkingSystem);
+    setShowReviewsModal(true);
+
+    try {
+      const response = await apiRequest(`/reviews/property/${parkingSystem._id}`, 'GET');
+      setPropertyReviews(response.reviews || []);
+    } catch (err) {
+      console.error('Fetch reviews error:', err);
+      setPropertyReviews([]);
+    }
+  };
+
   // Auto-detect location on component mount
   useEffect(() => {
     // Only run if we don't have location and aren't already getting it
@@ -602,6 +624,15 @@ export default function Parking() {
           </div>
         </div>
 
+        {/* ✅ AI Recommendations */}
+        {filteredSystems.length > 0 && (
+          <AIRecommendations
+            parkingOptions={filteredSystems}
+            userContext={{ location: userLocation, preferences: filters }}
+            onSelectParking={(parking) => handleBookParking(parking)}
+          />
+        )}
+
         {/* Enhanced Results Section */}
         <div className="parking-results">
           {!loading && !gettingLocation && (
@@ -651,10 +682,15 @@ export default function Parking() {
           ) : (
             <div className="parking-grid">
               {filteredSystems.map((system) => (
-                <div key={system._id} className="parking-card">
+                <div key={system._id} className="parking-card" style={{ position: 'relative' }}>
+                  {/* ✅ Batch 1: Favorite Button */}
+                  <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+                    <FavoriteButton propertyId={system._id} size="medium" />
+                  </div>
+
                   <div className="parking-card-image">
-                    <img 
-                      src={getParkingImage(system)} 
+                    <img
+                      src={getParkingImage(system)}
                       alt={system.name}
                       onError={(e) => {
                         e.target.src = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60';
@@ -676,13 +712,24 @@ export default function Parking() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="parking-card-content">
                     <div className="parking-card-header">
                       <h3 className="parking-name">{system.name}</h3>
-                      <div className="parking-rating">
-                        ⭐ {system.rating || '4.5'}
-                      </div>
+
+                      {/* ✅ Batch 1: Star Rating - Replace old rating */}
+                      {system.averageRating > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <StarRating rating={system.averageRating} readonly={true} size="small" />
+                          <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '4px' }}>
+                            ({system.totalReviews})
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="parking-rating">
+                          ⭐ {system.rating || '4.5'}
+                        </div>
+                      )}
                     </div>
 
                     <div className="parking-address">
@@ -728,19 +775,29 @@ export default function Parking() {
                     </div>
 
                     <div className="parking-actions">
-                      <button 
+                      <button
                         onClick={() => handleBookParking(system)}
                         className={`book-btn ${system.carSlots <= 0 ? 'disabled' : ''}`}
                         disabled={system.carSlots <= 0}
                       >
                         {system.carSlots > 0 ? '🎯 Book Now' : '❌ No Slots'}
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleShowDetails(system)}
                         className="details-btn"
                       >
                         📋 View Details
                       </button>
+                      {/* ✅ Batch 1: View Reviews Button */}
+                      {system.totalReviews > 0 && (
+                        <button
+                          onClick={() => handleViewReviews(system)}
+                          className="reviews-btn"
+                          title="View all reviews"
+                        >
+                          ⭐ Reviews ({system.totalReviews})
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -753,13 +810,94 @@ export default function Parking() {
         {error && !loading && !gettingLocation && (
           <div className="error-notification">
             ❌ {error}
-            <button 
-              className="dismiss-error" 
+            <button
+              className="dismiss-error"
               onClick={() => setError('')}
               title="Dismiss error"
             >
               ×
             </button>
+          </div>
+        )}
+
+        {/* ✅ Batch 1: Reviews Modal */}
+        {showReviewsModal && selectedProperty && (
+          <div className="modal-overlay" onClick={() => setShowReviewsModal(false)}>
+            <div className="modal-content reviews-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>⭐ Reviews for {selectedProperty.name}</h2>
+                <button className="modal-close" onClick={() => setShowReviewsModal(false)}>×</button>
+              </div>
+
+              <div className="modal-body">
+                {selectedProperty.averageRating > 0 && (
+                  <div className="reviews-summary">
+                    <div className="average-rating">
+                      <span className="rating-number">{selectedProperty.averageRating.toFixed(1)}</span>
+                      <StarRating rating={selectedProperty.averageRating} readonly={true} size="large" />
+                      <span className="total-reviews">{selectedProperty.totalReviews} {selectedProperty.totalReviews === 1 ? 'review' : 'reviews'}</span>
+                    </div>
+                  </div>
+                )}
+
+                {propertyReviews.length === 0 ? (
+                  <div className="no-reviews">
+                    <p>No reviews yet. Be the first to review this parking spot!</p>
+                  </div>
+                ) : (
+                  <div className="reviews-list">
+                    {propertyReviews.map((review) => (
+                      <div key={review._id} className="review-item">
+                        <div className="review-header">
+                          <div className="reviewer-info">
+                            <span className="reviewer-name">{review.user?.name || 'Anonymous'}</span>
+                            <span className="review-date">
+                              {new Date(review.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <StarRating rating={review.rating} readonly={true} size="small" />
+                        </div>
+
+                        {review.title && (
+                          <h4 className="review-title">{review.title}</h4>
+                        )}
+
+                        {review.comment && (
+                          <p className="review-comment">{review.comment}</p>
+                        )}
+
+                        {(review.cleanliness || review.security || review.accessibility || review.valueForMoney) && (
+                          <div className="review-categories">
+                            {review.cleanliness > 0 && (
+                              <span className="category-badge">🧹 Cleanliness: {review.cleanliness}/5</span>
+                            )}
+                            {review.security > 0 && (
+                              <span className="category-badge">🔒 Security: {review.security}/5</span>
+                            )}
+                            {review.accessibility > 0 && (
+                              <span className="category-badge">♿ Accessibility: {review.accessibility}/5</span>
+                            )}
+                            {review.valueForMoney > 0 && (
+                              <span className="category-badge">💰 Value: {review.valueForMoney}/5</span>
+                            )}
+                          </div>
+                        )}
+
+                        {review.ownerResponse && (
+                          <div className="owner-response">
+                            <strong>Owner Response:</strong>
+                            <p>{review.ownerResponse.response}</p>
+                            <span className="response-date">
+                              {new Date(review.ownerResponse.respondedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
