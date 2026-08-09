@@ -26,20 +26,37 @@ exports.register = async (req, res, next) => {
       phone,
       password,
       role: ["user", "owner", "rental"].includes(role) ? role : "user",
+      wallet: 0,
+      loyaltyPoints: 0,
       otp,
       otpExpiry
     });
 
     await user.save();
+    console.log("✅ User saved successfully:", user._id);
 
-    
-    await sendEmail(email, "Verify your Account", `Your OTP is ${otp}`);
+    // Send OTP email (wrapped in try-catch to not fail registration if email fails)
+    try {
+      await sendEmail(email, "Verify your Account", `Your OTP is ${otp}`);
+      console.log("📨 OTP email sent successfully to:", email);
+    } catch (emailError) {
+      console.error("⚠️ Email failed but continuing registration:", emailError.message);
+    }
 
     console.log("📨 OTP generated for user:", email, " =>", otp);
 
-    res.status(201).json({ success: true, message: "User registered successfully. OTP sent.", user: { id: user._id, email: user.email, role: user.role } });
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully. Check your email for OTP.",
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     console.error("❌ Register Error:", error.message);
+    console.error("❌ Error details:", error);
     const ApiError = require("../util/ApiError");
     next(new ApiError(500, "Server error"));
   }
@@ -61,9 +78,47 @@ exports.verifyOtp = async (req, res, next) => {
     user.otpExpiry = undefined;
     await user.save();
 
+    console.log("✅ OTP verified successfully for:", email);
     res.json({ success: true, message: "OTP verified successfully!" });
   } catch (err) {
     console.error("❌ Verify OTP Error:", err.message);
+    const ApiError = require("../util/ApiError");
+    next(new ApiError(500, "Server error"));
+  }
+};
+
+// Resend OTP
+exports.resendOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(new (require("../util/ApiError"))(404, "User not found"));
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
+    await user.save();
+
+    // Send email
+    try {
+      await sendEmail(email, "Verify your Account - New OTP", `Your new OTP is ${otp}`);
+      console.log("📨 New OTP sent to:", email, " =>", otp);
+    } catch (emailError) {
+      console.error("⚠️ Email failed:", emailError.message);
+    }
+
+    res.json({
+      success: true,
+      message: "New OTP sent to your email"
+    });
+  } catch (err) {
+    console.error("❌ Resend OTP Error:", err.message);
     const ApiError = require("../util/ApiError");
     next(new ApiError(500, "Server error"));
   }

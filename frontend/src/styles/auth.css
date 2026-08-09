@@ -709,3 +709,140 @@
     padding: 12px 14px;
   }
 }
+
+/* ===================================
+   OTP VERIFICATION PAGE STYLES
+   =================================== */
+
+.otp-container {
+  max-width: 500px;
+}
+
+.otp-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.otp-inputs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 2rem 0 1.5rem;
+}
+
+.otp-input {
+  width: 55px;
+  height: 60px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  transition: all 0.3s ease;
+  color: #1a202c;
+  outline: none;
+}
+
+.otp-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: scale(1.05);
+}
+
+.otp-input:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.otp-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.timer {
+  font-size: 0.95rem;
+  color: #4a5568;
+  margin-bottom: 1rem;
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.timer strong {
+  color: #667eea;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.resend-text {
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-top: 1rem;
+}
+
+.resend-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.resend-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+}
+
+.resend-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-state {
+  text-align: center;
+  padding: 2rem;
+}
+
+.error-state h3 {
+  font-size: 1.5rem;
+  color: #e53e3e;
+  margin-bottom: 1rem;
+}
+
+.error-state p {
+  color: #4a5568;
+  margin-bottom: 1.5rem;
+}
+
+/* OTP Mobile Responsive */
+@media (max-width: 600px) {
+  .otp-inputs {
+    gap: 8px;
+  }
+
+  .otp-input {
+    width: 45px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+
+  .otp-icon {
+    font-size: 3rem;
+  }
+}
