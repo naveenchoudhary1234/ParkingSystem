@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   address: { type: String }, // User address (optional)
   wallet: { type: Number, default: 0 }, // Wallet balance for refunds
   loyaltyPoints: { type: Number, default: 0 }, // Loyalty/Reward points
+  isVerified: { type: Boolean, default: false }, // Email verification status
   otp: { type: String },
   otpExpiry: { type: Date },
   resetToken: { type: String },

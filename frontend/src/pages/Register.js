@@ -12,18 +12,36 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent double submission
+    if (loading) return;
+
     setError("");
+    setLoading(true);
+
     try {
       const res = await apiRequest("/auth/register", "POST", { name, email, phone, password, role });
       console.log("[Register] Success", res);
+
+      // Clear form on success
+      setName("");
+      setEmail("");
+      setPhone("");
+      setPassword("");
+      setRole("user");
+
+      // Navigate to OTP screen
       navigate("/otp-verify", { state: { email } });
     } catch (err) {
       setError(err.message);
       console.error("[Register] Error", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,59 +56,64 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label className="form-label">Full Name</label>
-            <input 
-              type="text" 
-              placeholder="Enter your full name" 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              required 
+            <input
+              type="text"
+              placeholder="Enter your full name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
               className="form-input"
+              disabled={loading}
             />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              required 
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
               className="form-input"
+              disabled={loading}
             />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Phone Number</label>
-            <input 
-              type="text" 
-              placeholder="Enter your phone number" 
-              value={phone} 
-              onChange={e => setPhone(e.target.value)} 
-              required 
+            <input
+              type="text"
+              placeholder="Enter your phone number"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              required
               className="form-input"
+              disabled={loading}
             />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input 
-              type="password" 
-              placeholder="Create a strong password" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              required 
+            <input
+              type="password"
+              placeholder="Create a strong password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
               className="form-input"
+              disabled={loading}
             />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Register as</label>
-            <select 
-              value={role} 
-              onChange={e => setRole(e.target.value)} 
-              required 
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              required
               className="form-select"
+              disabled={loading}
             >
               <option value="user">🚗 User (Find & book parking spots)</option>
               <option value="rental">🏢 Rental (Add parking properties)</option>
@@ -102,12 +125,23 @@ export default function Register() {
               {role === "owner" && "Review and approve rental properties in your area"}
             </p>
           </div>
-          
-          <button type="submit" className="btn btn-primary btn-large">
-            Create Account
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
           </button>
-          
-          {error && <div className="error">{error}</div>}
         </form>
         
         <div className="auth-footer">

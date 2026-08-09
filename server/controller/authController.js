@@ -8,18 +8,48 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, phone, role } = req.body;
 
-    
+    // Check if user already exists
     let user = await User.findOne({ email });
+
     if (user) {
-      const ApiError = require("../util/ApiError");
-      return next(new ApiError(400, "User already exists"));
+      // If user exists and is already verified, they need to login
+      if (user.isVerified) {
+        const ApiError = require("../util/ApiError");
+        return next(new ApiError(400, "User already exists. Please login instead."));
+      }
+
+      // If user exists but not verified, allow re-sending OTP
+      console.log("📧 User exists but not verified. Sending new OTP...");
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = Date.now() + 5 * 60 * 1000;
+
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+
+      // Send new OTP
+      try {
+        await sendEmail(email, "Verify your Account", `Your OTP is ${otp}`);
+        console.log("📨 New OTP sent to:", email, " =>", otp);
+      } catch (emailError) {
+        console.error("⚠️ Email failed:", emailError.message);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Account pending verification. New OTP sent to your email.",
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role
+        }
+      });
     }
 
-  
+    // New user registration
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 5 * 60 * 1000;
 
-   
     user = new User({
       name,
       email,
@@ -28,12 +58,13 @@ exports.register = async (req, res, next) => {
       role: ["user", "owner", "rental"].includes(role) ? role : "user",
       wallet: 0,
       loyaltyPoints: 0,
+      isVerified: false,
       otp,
       otpExpiry
     });
 
     await user.save();
-    console.log("✅ User saved successfully:", user._id);
+    console.log("✅ New user created (pending verification):", user._id);
 
     // Send OTP email (wrapped in try-catch to not fail registration if email fails)
     try {
@@ -74,12 +105,19 @@ exports.verifyOtp = async (req, res, next) => {
       return next(new (require("../util/ApiError"))(400, "Invalid or expired OTP"));
     }
 
+    // Mark user as verified
+    user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
     await user.save();
 
     console.log("✅ OTP verified successfully for:", email);
-    res.json({ success: true, message: "OTP verified successfully!" });
+    console.log("✅ User account activated!");
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully! Your account is now active."
+    });
   } catch (err) {
     console.error("❌ Verify OTP Error:", err.message);
     const ApiError = require("../util/ApiError");
@@ -136,6 +174,12 @@ exports.login = async (req, res, next) => {
     if (!user) {
       console.log("❌ User not found for email:", email);
       return next(new (require("../util/ApiError"))(404, "User not found"));
+    }
+
+    // Check if user has verified their email
+    if (!user.isVerified) {
+      console.log("⚠️ User not verified:", email);
+      return next(new (require("../util/ApiError"))(403, "Please verify your email first. Check your inbox for the OTP."));
     }
 
     console.log("🔑 Hashed password in DB:", user.password);
